@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+wheels/
+*.whl
+*.tar.gz
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+pip-wheel-metadata/
+share/python-wheels/
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.env
+
+# Testing
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+nosetests.xml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# AgentBox state (per-project)
+.agentbox/sessions/
+
+# Distribution
+dist/
+build/

@@ -9,7 +9,7 @@ import json
 import time
 import uuid
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from dataclasses import dataclass, field, asdict
 from typing import Optional
@@ -59,7 +59,7 @@ class SessionRecord:
             self.total_llm_calls += 1
 
     def complete(self, status: str = "completed", error: str = None):
-        self.ended_at = datetime.utcnow().isoformat() + "Z"
+        self.ended_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
         self.status = status
         self.error = error
 
@@ -103,7 +103,7 @@ class SessionRecorder:
             agent_name=agent_name,
             agent_version=agent_version,
             model=model,
-            started_at=datetime.utcnow().isoformat() + "Z",
+            started_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
         )
 
     def set_input_hash(self, input_text: str):
@@ -112,7 +112,7 @@ class SessionRecorder:
     def record_llm_call(self, prompt: str, response: str, duration_ms: int = 0,
                         cost_usd: float = 0, tokens: int = 0):
         self.session.add_action(ActionRecord(
-            timestamp=datetime.utcnow().isoformat() + "Z",
+            timestamp=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
             action_type="llm_call",
             content={"prompt_preview": prompt[:200], "response_preview": response[:200]},
             duration_ms=duration_ms,
@@ -123,7 +123,7 @@ class SessionRecorder:
     def record_tool_call(self, tool_name: str, args: dict, result: str,
                          duration_ms: int = 0, cost_usd: float = 0):
         self.session.add_action(ActionRecord(
-            timestamp=datetime.utcnow().isoformat() + "Z",
+            timestamp=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
             action_type="tool_call",
             content={"tool": tool_name, "args": args, "result_preview": str(result)[:200]},
             duration_ms=duration_ms,
@@ -132,14 +132,14 @@ class SessionRecorder:
 
     def record_decision(self, decision: str, reasoning: str = ""):
         self.session.add_action(ActionRecord(
-            timestamp=datetime.utcnow().isoformat() + "Z",
+            timestamp=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
             action_type="decision",
             content={"decision": decision, "reasoning": reasoning},
         ))
 
     def record_guardrail(self, guardrail_name: str, triggered_by: str, action_taken: str):
         self.session.add_action(ActionRecord(
-            timestamp=datetime.utcnow().isoformat() + "Z",
+            timestamp=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
             action_type="guardrail_triggered",
             content={
                 "guardrail": guardrail_name,
@@ -150,7 +150,7 @@ class SessionRecorder:
 
     def record_error(self, error: str, context: str = ""):
         self.session.add_action(ActionRecord(
-            timestamp=datetime.utcnow().isoformat() + "Z",
+            timestamp=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
             action_type="error",
             content={"error": error, "context": context},
         ))

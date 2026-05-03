@@ -7,7 +7,7 @@ Version, tag, and rollback AI agents.
 import json
 import shutil
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 VERSIONS_DIR = ".agentbox/versions"
@@ -51,7 +51,7 @@ def tag_version(version: str, base_dir: str = "."):
     # Write version metadata
     meta = {
         "version": version,
-        "tagged_at": datetime.utcnow().isoformat() + "Z",
+        "tagged_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
         "manifest_hash": compute_agent_hash(str(manifest_src)),
     }
     with open(version_dir / "VERSION.json", "w") as f:
@@ -88,7 +88,7 @@ def rollback_to(version: str, base_dir: str = "."):
 
     # Backup current state first
     try:
-        tag_version(f"pre-rollback-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}", base_dir)
+        tag_version(f"pre-rollback-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}", base_dir)
     except ValueError:
         pass
 
@@ -113,4 +113,4 @@ def rollback_to(version: str, base_dir: str = "."):
             shutil.rmtree(target)
         shutil.copytree(saved_evals, target)
 
-    return {"rolled_back_to": version, "timestamp": datetime.utcnow().isoformat()}
+    return {"rolled_back_to": version, "timestamp": datetime.now(timezone.utc).isoformat()}

@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgentBox — Docker for AI Agents</title>
+  <meta name="description" content="Package, test, version, and govern your AI agents — across every framework. Open-source CLI." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0d0f;
+      --surface: #141416;
+      --border: #1e1e22;
+      --text: #e8e8ec;
+      --muted: #6b6b7a;
+      --accent: #6c5ce7;
+      --accent-light: #a29bfe;
+      --green: #00cec9;
+      --yellow: #fdcb6e;
+      --red: #e17055;
+      --code-bg: #0a0a0c;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 16px;
+    }
+
+    a { color: var(--accent-light); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      border-bottom: 1px solid var(--border);
+      background: rgba(13,13,15,0.92);
+      backdrop-filter: blur(12px);
+      padding: 0 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 56px;
+    }
+    .nav-logo {
+      font-size: 1.1rem; font-weight: 700; color: var(--text);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .nav-logo span { color: var(--accent-light); }
+    .nav-links { display: flex; gap: 2rem; }
+    .nav-links a { color: var(--muted); font-size: 0.9rem; }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+    .nav-cta {
+      background: var(--accent); color: #fff;
+      padding: 6px 16px; border-radius: 6px;
+      font-size: 0.85rem; font-weight: 600;
+    }
+    .nav-cta:hover { background: #7d6ff0; text-decoration: none; }
+
+    /* ── Hero ── */
+    .hero {
+      max-width: 900px; margin: 0 auto;
+      padding: 7rem 2rem 5rem;
+      text-align: center;
+    }
+    .badge {
+      display: inline-block;
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 4px 14px;
+      font-size: 0.78rem; color: var(--muted);
+      margin-bottom: 2rem;
+    }
+    .badge b { color: var(--accent-light); }
+    h1 {
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      font-weight: 800; letter-spacing: -0.03em;
+      line-height: 1.1; margin-bottom: 1.5rem;
+    }
+    h1 em { font-style: normal; color: var(--accent-light); }
+    .hero-sub {
+      font-size: 1.15rem; color: var(--muted);
+      max-width: 560px; margin: 0 auto 2.5rem;
+      line-height: 1.7;
+    }
+    .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn-primary {
+      background: var(--accent); color: #fff;
+      padding: 12px 28px; border-radius: 8px;
+      font-weight: 700; font-size: 1rem;
+      transition: background .15s;
+    }
+    .btn-primary:hover { background: #7d6ff0; text-decoration: none; }
+    .btn-secondary {
+      border: 1px solid var(--border); color: var(--text);
+      padding: 12px 28px; border-radius: 8px;
+      font-weight: 600; font-size: 1rem;
+      transition: border-color .15s;
+    }
+    .btn-secondary:hover { border-color: var(--muted); text-decoration: none; }
+
+    /* ── Install snippet ── */
+    .install-bar {
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 3rem; gap: 0;
+    }
+    .install-box {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 24px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 0.9rem; color: var(--accent-light);
+      letter-spacing: 0.02em;
+    }
+    .install-box span { color: var(--muted); }
+
+    /* ── Problem/Solution ── */
+    .section { padding: 5rem 2rem; max-width: 1100px; margin: 0 auto; }
+    .section-label {
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--accent-light);
+      margin-bottom: 1rem;
+    }
+    h2 {
+      font-size: clamp(1.7rem, 3.5vw, 2.4rem);
+      font-weight: 800; letter-spacing: -0.02em;
+      margin-bottom: 1.2rem; line-height: 1.2;
+    }
+    .lead { font-size: 1.1rem; color: var(--muted); max-width: 640px; line-height: 1.75; }
+
+    .stat-row {
+      display: flex; gap: 3rem; margin: 3rem 0; flex-wrap: wrap;
+    }
+    .stat { flex: 1; min-width: 160px; }
+    .stat-num {
+      font-size: 2.8rem; font-weight: 800;
+      color: var(--accent-light); letter-spacing: -0.03em;
+    }
+    .stat-desc { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+
+    /* ── Table comparison ── */
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 2.5rem 0;
+      font-size: 0.95rem;
+    }
+    .compare-table th {
+      text-align: left; padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted); font-weight: 600; font-size: 0.8rem;
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .compare-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .compare-table tr:last-child td { border-bottom: none; }
+    .compare-table td:first-child { color: var(--muted); width: 36%; }
+    .compare-table td:last-child { color: var(--text); }
+    .check { color: var(--green); }
+    .cross { color: var(--red); }
+
+    /* ── Features grid ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-top: 3rem;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      transition: border-color .2s;
+    }
+    .feature-card:hover { border-color: var(--accent); }
+    .feature-icon {
+      font-size: 1.5rem; margin-bottom: 1rem;
+    }
+    .feature-title {
+      font-weight: 700; font-size: 1.05rem; margin-bottom: .5rem;
+    }
+    .feature-desc { color: var(--muted); font-size: 0.9rem; line-height: 1.65; }
+
+    /* ── Terminal demo ── */
+    .terminal {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 3rem 0;
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+      font-size: 0.85rem;
+    }
+    .terminal-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-red { background: #ff5f57; }
+    .dot-yellow { background: #febc2e; }
+    .dot-green { background: #28c840; }
+    .terminal-title {
+      flex: 1; text-align: center; font-size: 0.75rem;
+      color: var(--muted); margin-left: -60px;
+    }
+    .terminal-body { padding: 1.5rem; line-height: 2; }
+    .t-prompt { color: var(--muted); }
+    .t-cmd { color: var(--accent-light); }
+    .t-output { color: var(--text); }
+    .t-success { color: var(--green); }
+    .t-warn { color: var(--yellow); }
+    .t-err { color: var(--red); }
+    .t-dim { color: var(--muted); }
+    .t-header { color: var(--accent-light); font-weight: bold; }
+
+    /* ── Commands section ── */
+    .commands-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-top: 2.5rem;
+    }
+    .cmd-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.1rem 1.25rem;
+    }
+    .cmd-name {
+      font-family: "SF Mono", monospace;
+      font-size: 0.82rem;
+      color: var(--accent-light);
+      font-weight: 700; margin-bottom: 4px;
+    }
+    .cmd-desc { font-size: 0.83rem; color: var(--muted); }
+
+    /* ── Divider ── */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+    /* ── CTA Banner ── */
+    .cta-banner {
+      text-align: center;
+      padding: 6rem 2rem;
+    }
+    .cta-banner h2 { margin-bottom: 1rem; }
+    .cta-banner p { color: var(--muted); max-width: 500px; margin: 0 auto 2.5rem; }
+    .cta-banner .actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--text); }
+
+    @media (max-width: 640px) {
+      nav { padding: 0 1rem; }
+      .nav-links { display: none; }
+      .hero { padding: 5rem 1.5rem 4rem; }
+      .section { padding: 3.5rem 1.5rem; }
+      .stat-row { gap: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-logo">⬡ <span>AgentBox</span></div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#commands">Commands</a>
+    <a href="#demo">Demo</a>
+    <a href="https://github.com/CharanBharathula/agentbox">GitHub</a>
+  </div>
+  <a class="nav-cta" href="https://github.com/CharanBharathula/agentbox">Get Started →</a>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="badge">Open Source · Apache 2.0 · <b>v0.1.0</b></div>
+  <h1>
+    <em>Docker</em> for<br />AI Agents
+  </h1>
+  <p class="hero-sub">
+    Package, test, version, and govern your AI agents —
+    across every framework, with one CLI.
+  </p>
+  <div class="hero-actions">
+    <a class="btn-primary" href="https://github.com/CharanBharathula/agentbox">View on GitHub</a>
+    <a class="btn-secondary" href="#demo">See the Demo</a>
+  </div>
+  <div class="install-bar">
+    <div class="install-box">
+      <span>$</span> pip install agentbox
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- Problem -->
+<section class="section">
+  <p class="section-label">The Problem</p>
+  <h2>Your agents are ungoverned. You know it.</h2>
+  <p class="lead">
+    Software has Dockerfiles, CI/CD, semantic versioning, crash logs, and rollbacks.
+    AI agents have a Python file in a repo, maybe. No manifest. No tests. No audit trail.
+    No way to rollback a bad prompt.
+  </p>
+  <div class="stat-row">
+    <div class="stat">
+      <div class="stat-num">97%</div>
+      <div class="stat-desc">of companies have deployed AI agents</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">82%</div>
+      <div class="stat-desc">can't even track what agents they're running</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">0</div>
+      <div class="stat-desc">standardized formats for agent configuration before AgentBox</div>
+    </div>
+  </div>
+
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>Problem</th>
+        <th>AgentBox Solution</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>"What agent is running in prod?"</td>
+        <td><span class="check">✓</span> <code>agentbox.yaml</code> manifest — one file per agent</td>
+      </tr>
+      <tr>
+        <td>"Did the new prompt regress behavior?"</td>
+        <td><span class="check">✓</span> <code>agentbox test</code> — LLM-as-judge eval suite</td>
+      </tr>
+      <tr>
+        <td>"We need to rollback to last week's prompt"</td>
+        <td><span class="check">✓</span> <code>agentbox rollback v1.2.1</code> — one command</td>
+      </tr>
+      <tr>
+        <td>"Why did the agent make that decision?"</td>
+        <td><span class="check">✓</span> <code>agentbox replay &lt;session-id&gt;</code> — flight recorder</td>
+      </tr>
+      <tr>
+        <td>"How many shadow agents are in this codebase?"</td>
+        <td><span class="check">✓</span> <code>agentbox scan ./src</code> — finds all frameworks</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<hr class="divider" />
+
+<!-- Features -->
+<section class="section" id="features">
+  <p class="section-label">Features</p>
+  <h2>Everything your agents are missing</h2>
+  <p class="lead">Built on the same mental model that made Docker successful — but for the AI agent era.</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">📋</div>
+      <div class="feature-title">Agent Manifest</div>
+      <div class="feature-desc">
+        <code>agentbox.yaml</code> is the Dockerfile for agents. Declares model, framework,
+        tools, guardrails, memory, and evals in a single file.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧪</div>
+      <div class="feature-title">Standardized Testing</div>
+      <div class="feature-desc">
+        Write YAML eval cases with expected behavior in natural language.
+        AgentBox uses an LLM-as-judge to grade pass/fail, latency, and cost.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🏷️</div>
+      <div class="feature-title">Version Control</div>
+      <div class="feature-desc">
+        <code>agentbox tag v1.2.0</code> snapshots your manifest, prompts, and evals.
+        <code>agentbox rollback v1.1.0</code> restores any prior state instantly.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🛩️</div>
+      <div class="feature-title">Flight Recorder</div>
+      <div class="feature-desc">
+        Record every LLM call, tool invocation, and decision to disk.
+        Replay any session to understand exactly what happened and why.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔍</div>
+      <div class="feature-title">Shadow Agent Scanner</div>
+      <div class="feature-desc">
+        Scan any codebase and find every AI agent across LangChain, CrewAI,
+        AutoGen, OpenAI SDK, Anthropic SDK, LlamaIndex, and DSPy.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🛡️</div>
+      <div class="feature-title">Guardrail Declaration</div>
+      <div class="feature-desc">
+        Declare safety constraints in the manifest — cost caps, content filters,
+        human approval requirements — alongside the agent configuration.
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- Terminal Demo -->
+<section class="section" id="demo">
+  <p class="section-label">Demo</p>
+  <h2>Two minutes to a governed agent</h2>
+
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="dot dot-red"></div>
+      <div class="dot dot-yellow"></div>
+      <div class="dot dot-green"></div>
+      <div class="terminal-title">Terminal</div>
+    </div>
+    <div class="terminal-body">
+      <div><span class="t-prompt">$ </span><span class="t-cmd">pip install agentbox</span></div>
+      <div class="t-dim">Successfully installed agentbox-0.1.0</div>
+      <br/>
+      <div><span class="t-prompt">$ </span><span class="t-cmd">agentbox init support-agent</span></div>
+      <div class="t-header">⬡ AgentBox — Initializing agent: support-agent</div>
+      <br/>
+      <div class="t-success">  ✓ Created agentbox.yaml</div>
+      <div class="t-success">  ✓ Created evals/test_suite.yaml</div>
+      <div class="t-success">  ✓ Created .agentbox/.gitignore</div>
+      <br/>
+      <div><span class="t-prompt">$ </span><span class="t-cmd">agentbox validate</span></div>
+      <div class="t-header">⬡ AgentBox — Validating agent manifest</div>
+      <br/>
+      <div>  <span style="color:#6c5ce7">→</span> Agent: <b>support-agent</b> v0.1.0</div>
+      <div>  <span style="color:#6c5ce7">→</span> Model: claude-sonnet-4-20250514</div>
+      <div class="t-warn">  ! WARNING: No system prompt defined</div>
+      <br/>
+      <div><span class="t-prompt">$ </span><span class="t-cmd">agentbox test</span></div>
+      <div class="t-header">⬡ AgentBox — Running eval suite</div>
+      <br/>
+      <div>  STATUS  TEST                   LATENCY   COST</div>
+      <div>  ──────────────────────────────────────────</div>
+      <div>  <span class="t-success">PASS</span>    basic-greeting          312ms     $0.0014</div>
+      <div>  <span class="t-success">PASS</span>    escalate-angry-customer 445ms     $0.0021</div>
+      <div>  <span class="t-err">FAIL</span>    no-pii-leak             289ms     $0.0012</div>
+      <br/>
+      <div>  <span class="t-err">66.7% pass rate</span>  2 passed · 1 failed</div>
+      <br/>
+      <div><span class="t-prompt">$ </span><span class="t-cmd">agentbox tag v0.1.0</span></div>
+      <div class="t-success">  ✓ Tagged v0.1.0</div>
+      <div>  <span style="color:#6c5ce7">→</span> Hash: a3f7c912b441</div>
+      <br/>
+      <div><span class="t-prompt">$ </span><span class="t-cmd">agentbox scan ./backend</span></div>
+      <div class="t-header">⬡ AgentBox — Scanning for agents in: ./backend</div>
+      <br/>
+      <div>  <span style="color:#6c5ce7">→</span> Files scanned: 847</div>
+      <div>  <span style="color:#6c5ce7">→</span> Agents found: 12</div>
+      <br/>
+      <div>  FILE                           FW          GUARDRAILS</div>
+      <div>  ──────────────────────────────────────────────────────</div>
+      <div>  services/support/agent.py      anthropic   <span class="t-success">✓</span></div>
+      <div>  scripts/bulk_email.py          openai_sdk  <span class="t-err">✗</span></div>
+      <div>  workflows/pipeline.py          langchain   <span class="t-err">✗</span></div>
+      <br/>
+      <div class="t-warn">  ⚠  9 ungoverned agents found (no guardrails detected)</div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- Commands -->
+<section class="section" id="commands">
+  <p class="section-label">Commands</p>
+  <h2>10 commands. That's the whole CLI.</h2>
+
+  <div class="commands-grid">
+    <div class="cmd-card">
+      <div class="cmd-name">agentbox init [name]</div>
+      <div class="cmd-desc">Scaffold a new agent project with manifest, evals, and directories</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">agentbox validate</div>
+      <div class="cmd-desc">Check the current manifest for errors, warnings, and missing fields</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">agentbox test</div>
+      <div class="cmd-desc">Run the eval suite. Uses LLM-as-judge to grade expected behavior</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">agentbox tag &lt;version&gt;</div>
+      <div class="cmd-desc">Snapshot manifest + prompts + evals as a named version</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">agentbox versions</div>
+      <div class="cmd-desc">List all tagged versions with hash and timestamp</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">agentbox rollback &lt;version&gt;</div>
+      <div class="cmd-desc">Restore a prior version. Auto-saves current state before rollback</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">agentbox sessions</div>
+      <div class="cmd-desc">List recorded sessions with cost, token, and status summary</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">agentbox replay &lt;id&gt;</div>
+      <div class="cmd-desc">Replay a session: every LLM call, tool use, and decision in order</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">agentbox scan [dir]</div>
+      <div class="cmd-desc">Find every AI agent in a codebase across 7 frameworks</div>
+    </div>
+    <div class="cmd-card">
+      <div class="cmd-name">agentbox info</div>
+      <div class="cmd-desc">Show the current agent's configuration and status</div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- CTA -->
+<section class="cta-banner">
+  <p class="section-label">Open Source</p>
+  <h2>Govern your agents.<br/>Before someone else does.</h2>
+  <p>Apache 2.0 licensed. Contributions welcome. Follows the Docker monetization playbook — open-source CLI, cloud platform coming.</p>
+  <div class="actions">
+    <a class="btn-primary" href="https://github.com/CharanBharathula/agentbox">Star on GitHub</a>
+    <a class="btn-secondary" href="https://github.com/CharanBharathula/agentbox/issues">Open an Issue</a>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <p>
+    Built by <a href="https://github.com/CharanBharathula">CharanBharathula</a> ·
+    <a href="https://github.com/CharanBharathula/agentbox">GitHub</a> ·
+    <a href="https://github.com/CharanBharathula/agentbox/blob/main/LICENSE">License</a>
+  </p>
+</footer>
+
+</body>
+</html>
