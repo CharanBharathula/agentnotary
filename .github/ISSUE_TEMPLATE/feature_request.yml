@@ -1,0 +1,46 @@
+name: Feature request
+description: Propose a new capability for AgentBox
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before opening, please confirm the request fits the AgentBox thesis (see `CONTRIBUTING.md`):
+        the project owns **declare → seal → enforce → document** for AI agents and is intentionally narrow.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What's the user pain? Be concrete — describe the situation, not the solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed approach
+      description: How would AgentBox solve this? CLI surface, manifest fields, output format, etc.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Which subsystem?
+      options:
+        - seal (reproducibility / lockfile)
+        - guard (runtime enforcement)
+        - compliance (regulatory docs)
+        - manifest schema
+        - scanner / sessions / versioning
+        - new top-level command
+        - tooling / CI / packaging
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other tools that solve this; why they're not enough.

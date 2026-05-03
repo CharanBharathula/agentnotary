@@ -1,0 +1,71 @@
+name: Bug report
+description: Report something that's broken in AgentBox
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please fill in as much as you can — partial reports are welcome.
+
+  - type: input
+    id: version
+    attributes:
+      label: AgentBox version
+      description: Output of `agentbox --help` or your `pyproject.toml` pin
+      placeholder: "0.2.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: command
+    attributes:
+      label: Which command is affected?
+      options:
+        - seal
+        - guard
+        - compliance
+        - init / validate / info
+        - test / sessions / replay
+        - tag / versions / rollback
+        - scan
+        - other / not command-specific
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug — what you did, what happened, what you expected.
+      placeholder: |
+        Steps to reproduce:
+        1. ...
+        2. ...
+        3. ...
+
+        Expected: ...
+        Got: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: manifest
+    attributes:
+      label: Relevant `agentbox.yaml` (redacted)
+      description: Paste the manifest (or the relevant block). Strip any secrets.
+      render: yaml
+
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Output / traceback
+      description: Full CLI output, traceback, or error message.
+      render: shell
+
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "Python 3.12 on macOS 14.5 / Ubuntu 22.04 / Windows 11"
+    validations:
+      required: true

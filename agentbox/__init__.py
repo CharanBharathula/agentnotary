@@ -1,2 +1,2 @@
-"""AgentBox — Docker for AI Agents."""
-__version__ = "0.1.0"
+"""AgentBox — The declarative governance spec for AI agents."""
+__version__ = "0.2.0"

@@ -292,13 +292,14 @@
 
 <!-- Hero -->
 <section class="hero">
-  <div class="badge">Open Source · Apache 2.0 · <b>v0.1.0</b></div>
+  <div class="badge">Open Source · Apache 2.0 · <b>v0.2.0</b></div>
   <h1>
-    <em>Docker</em> for<br />AI Agents
+    The <em>declarative governance spec</em><br />for AI agents
   </h1>
   <p class="hero-sub">
-    Package, test, version, and govern your AI agents —
-    across every framework, with one CLI.
+    <strong>Declare → Seal → Enforce → Document.</strong><br/>
+    Three commands turn agentbox.yaml into a sealed, runtime-enforced,
+    audit-ready agent. Open source. Framework-agnostic.
   </p>
   <div class="hero-actions">
     <a class="btn-primary" href="https://github.com/CharanBharathula/agentbox">View on GitHub</a>
@@ -347,15 +348,19 @@
     <tbody>
       <tr>
         <td>"What agent is running in prod?"</td>
-        <td><span class="check">✓</span> <code>agentbox.yaml</code> manifest — one file per agent</td>
+        <td><span class="check">✓</span> <code>agentbox.yaml</code> + <code>agent.lock</code> — sealed snapshot</td>
       </tr>
       <tr>
-        <td>"Did the new prompt regress behavior?"</td>
-        <td><span class="check">✓</span> <code>agentbox test</code> — LLM-as-judge eval suite</td>
+        <td>"Why did the agent burn $4,000 overnight?"</td>
+        <td><span class="check">✓</span> <code>agentbox guard run</code> — would have blocked it at $1.00</td>
       </tr>
       <tr>
-        <td>"We need to rollback to last week's prompt"</td>
-        <td><span class="check">✓</span> <code>agentbox rollback v1.2.1</code> — one command</td>
+        <td>"Did the prompt or the model drift?"</td>
+        <td><span class="check">✓</span> <code>agentbox seal --verify</code> — fails CI on drift</td>
+      </tr>
+      <tr>
+        <td>"We need EU AI Act docs by August 2026"</td>
+        <td><span class="check">✓</span> <code>agentbox compliance --standard eu-ai-act</code></td>
       </tr>
       <tr>
         <td>"Why did the agent make that decision?"</td>

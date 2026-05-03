@@ -1,29 +1,39 @@
 # AgentBox
 
-**Docker for AI Agents.** Package, test, version, and govern your AI agents — across every framework.
+**The declarative governance spec for AI agents.** Open-source. Apache 2.0.
+Three commands: **declare → seal → enforce → document.**
 
-```
+```bash
 pip install agentbox
-agentbox init my-support-agent
-agentbox test
-agentbox tag v1.0.0
+agentbox init my-agent
+agentbox seal                                       # Cargo.lock for AI agents
+agentbox guard run -- python my_agent.py            # Block runaway loops at the API boundary
+agentbox compliance --standard eu-ai-act            # Auto-generate Annex IV docs
 ```
+
+[![CI](https://github.com/CharanBharathula/agentbox/actions/workflows/ci.yml/badge.svg)](https://github.com/CharanBharathula/agentbox/actions)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
 ---
 
-## Why AgentBox?
+## Why
 
-97% of companies have deployed AI agents. 82% can't track what agents they're running.
+97% of companies have deployed AI agents. 82% can't track what agents they're running. Every existing observability tool — LangSmith, Langfuse, Helicone, AgentOps — only **watches** what happened. None of them:
 
-Software earned its infrastructure: Dockerfiles, CI/CD, semantic versioning, crash logs, rollbacks. AI agents have none of it. AgentBox brings the same discipline to agents:
+- **Prevent** runaway loops at the API boundary (passive observation, not enforcement)
+- **Prove** an agent hasn't drifted (no cryptographic seal)
+- **Document** the agent for regulators (EU AI Act enforcement begins August 2, 2026)
 
-| Problem | AgentBox Solution |
+AgentBox owns that empty position. It sits **alongside** your observability stack, not against it.
+
+| Problem | AgentBox solution |
 |---|---|
-| "What agent are we running in prod?" | `agentbox.yaml` manifest — one file per agent |
-| "Did the new prompt regress behavior?" | `agentbox test` — LLM-as-judge eval suite |
-| "We need to rollback to last week's prompt" | `agentbox rollback v1.2.1` |
-| "Why did the agent make that decision?" | `agentbox replay <session-id>` |
-| "How many shadow agents exist in this repo?" | `agentbox scan ./src` |
+| "Did our prompt change behavior?" | `agentbox seal --verify` — fails if anything drifted |
+| "Why did the agent burn $4,000 overnight?" | `agentbox guard` — would have blocked it at $1.00 |
+| "We need EU AI Act docs by August" | `agentbox compliance --standard eu-ai-act` |
+| "Provider silently updated the model" | Probe-response hash in `agent.lock` catches it |
+| "What agents exist in our codebase?" | `agentbox scan ./src` finds them across 7 frameworks |
 
 ---
 
@@ -32,9 +42,10 @@ Software earned its infrastructure: Dockerfiles, CI/CD, semantic versioning, cra
 ```bash
 pip install agentbox
 
-# With LLM provider support (for running evals)
-pip install "agentbox[anthropic]"
+# Optional extras
+pip install "agentbox[anthropic]"   # for live LLM evals
 pip install "agentbox[openai]"
+pip install "agentbox[pii]"         # Presidio NER for stronger PII detection
 pip install "agentbox[all]"
 ```
 
@@ -42,251 +53,201 @@ pip install "agentbox[all]"
 
 ---
 
-## Quick Start
+## The three commands
 
-### 1. Initialize an agent project
+### 1. `agentbox seal` — Cargo.lock for AI agents
+
+Produces `agent.lock` — a cryptographically-hashed snapshot of *everything* that defines your agent. Manifest, prompts (raw + normalized), tool source code, MCP package versions, dependency lockfile, environment expectations.
+
+Commit `agent.lock` next to `agentbox.yaml`. Now you can:
+
+```bash
+agentbox seal             # write agent.lock
+agentbox seal --verify    # fail CI if anything has drifted
+agentbox seal --probe     # also hash a canonical-prompt response
+agentbox seal diff other.lock
+```
+
+The optional `--probe` flag sends a fixed prompt at temperature 0 and hashes the model's response. If your provider silently swaps weights behind the same model name, the next seal's probe hash diverges. **No other agent tool does this.**
+
+### 2. `agentbox guard run -- <command>` — runtime enforcement
+
+A local HTTP reverse proxy that wraps your agent's LLM provider calls. Framework-agnostic — works with anything that respects `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL`.
+
+```bash
+agentbox guard run -- python -m my_agent
+```
+
+Enforces typed guardrails declared in `agentbox.yaml`:
+
+- **`cost`** — per-call and per-session USD caps
+- **`iterations`** — max LLM calls, max tool calls
+- **`tools`** — allowlist / denylist / require_approval
+- **`pii`** — redact or block SSN, email, credit-card patterns at the wire
+- **`content`** — max input tokens, blocked phrases
+- **`rate`** — per-minute and per-session
+
+Blocked calls return a **provider-shaped 403** so your SDK raises its native exception class. Every existing observability tool is passive — guard is the only one that intercepts.
+
+### 3. `agentbox compliance --standard eu-ai-act` — regulator-ready docs
+
+Combines manifest + seal + recent sessions + a deterministic risk classifier into EU AI Act Annex IV technical documentation. Markdown for engineers (committable, diffable in PRs), JSON for GRC tools (OneTrust, ServiceNow GRC, Drata, Vanta).
+
+```bash
+agentbox compliance --check                                  # CI mode: fails if metadata is missing
+agentbox compliance --standard eu-ai-act --output ./docs     # writes .md + .json
+```
+
+The risk classifier is a **rule engine, not an LLM call.** Every classification cites the rule that fired (`EU-AI-ACT-ANNEX-III-payment` triggered by keyword `payment` in tools/description), so a compliance officer can audit the classifier itself.
+
+> ⚠️ **Important:** Generated documentation is a *scaffold only — not legal advice.* Review by qualified counsel and a notified body is required before regulatory submission.
+
+---
+
+## Quickstart
 
 ```bash
 mkdir my-agent && cd my-agent
-agentbox init my-support-agent
+agentbox init refund-bot
 ```
 
-This creates:
-```
-my-agent/
-├── agentbox.yaml          # Agent manifest (like a Dockerfile)
-├── prompts/               # System prompts
-├── evals/
-│   └── test_suite.yaml    # Eval cases
-└── .agentbox/             # State directory (.gitignore sessions/)
-    ├── sessions/
-    └── versions/
-```
-
-### 2. Edit your manifest
-
-`agentbox.yaml` is the single source of truth for your agent:
+Edit `agentbox.yaml`:
 
 ```yaml
+apiVersion: agentbox/v0.2
 agent:
-  name: my-support-agent
+  name: refund-bot
   version: 0.1.0
-  description: Customer support agent
-  model: claude-sonnet-4-20250514
+
   framework: anthropic
+  model:
+    provider: anthropic
+    name: claude-sonnet-4-5-20251022
+    pinned_version: claude-sonnet-4-5-20251022
+    temperature: 0.2
+    max_tokens: 2048
+
+  system_prompt_file: ./prompts/system.md
 
   tools:
-    - name: search_kb
-      type: function
-    - name: create_ticket
-      type: api
-      endpoint: https://api.helpdesk.internal/tickets
+    - { name: lookup_order, type: function, module: app.tools:lookup_order }
+    - { name: process_refund, type: api,
+        endpoint: https://api.acme.com/refunds, auth: ACME_KEY }
 
   guardrails:
-    - no-pii: "SSN|credit card|password"
-    - cost-cap: "0.10"
+    cost:       { max_usd_per_session: 0.50, max_usd_per_call: 0.10, action: block }
+    iterations: { max_llm_calls: 25, action: block }
+    tools:      { allowlist: [lookup_order, process_refund],
+                  require_approval: [process_refund] }
+    pii:        { patterns: [SSN, EMAIL, CREDIT_CARD], action: redact, direction: both }
+    rate:       { max_calls_per_minute: 60 }
 
-  memory: conversation
-  eval_suite: ./evals/test_suite.yaml
+  entry_point:
+    command: "python -m refund_bot"
+    env_vars: [ANTHROPIC_API_KEY, ACME_KEY]
+
+  compliance:
+    risk_class: limited
+    affected_users: external_consumers
+    human_oversight: review_required
+    intended_purpose: |
+      Resolves Tier-1 customer refund requests for orders under $50.
+    out_of_scope: [chargebacks, subscriptions]
+    data_handling:
+      processes_pii: true
+      pii_categories: [name, email, order_id]
+      retention_days: 90
 ```
 
-### 3. Write evals
-
-```yaml
-# evals/test_suite.yaml
-suite: my-support-agent-evals
-version: "1"
-
-cases:
-  - name: basic-greeting
-    input: "Hello, I need help"
-    expected_behavior: "Greets the user warmly and asks how it can help"
-    max_latency_ms: 3000
-    max_cost_usd: 0.02
-
-  - name: escalate-angry-customer
-    input: "This is unacceptable! I've been waiting 3 weeks!"
-    expected_behavior: "Acknowledges frustration, apologizes, offers immediate escalation"
-    must_call_tools: [create_ticket]
-```
-
-### 4. Validate, test, and version
+Then ship the governance loop:
 
 ```bash
-agentbox validate          # Check manifest for issues
-agentbox test              # Run eval suite (uses LLM as judge)
-agentbox test --verbose    # Show full LLM responses
-agentbox tag v0.1.0        # Snapshot current state
+agentbox seal                                     # lock the agent
+agentbox guard run -- python -m refund_bot        # run with enforcement
+agentbox compliance --standard eu-ai-act --output ./docs
+git add agentbox.yaml agent.lock docs/ && git commit
 ```
 
 ---
 
-## All Commands
+## All commands
 
-```
-agentbox init [name]           Initialize a new agent project
-agentbox validate              Validate the current agent manifest
-agentbox test [--verbose]      Run eval suite against the agent
-agentbox tag <version>         Tag current state as a version
-agentbox versions              List all tagged versions
-agentbox rollback <version>    Rollback to a tagged version
-agentbox sessions              List recorded sessions
-agentbox replay <session-id>   Replay a recorded session (flight recorder)
-agentbox scan [directory]      Discover agents across a codebase
-agentbox info                  Show current agent info
-```
+```text
+Govern (v0.2):
+  seal [--probe]          Lock the agent into a reproducible snapshot
+  seal --verify           Verify nothing has drifted since the last seal
+  guard run -- <cmd>      Run an agent under runtime enforcement
+  compliance              Generate regulatory documentation (EU AI Act, ...)
 
----
+Develop:
+  init [name]             Create a new agent project
+  validate                Validate agent manifest
+  test [--verbose]        Run eval suite
+  info                    Show current agent details
 
-## Session Recording
+Versioning:
+  tag <version>           Tag current state (e.g., v1.0.0)
+  versions                List all tagged versions
+  rollback <version>      Restore a tagged version
 
-Wire the flight recorder into your agent to capture every LLM call, tool invocation, and decision:
-
-```python
-from agentbox.recorder import SessionRecorder
-
-recorder = SessionRecorder(agent_name="my-support-agent", version="0.1.0")
-
-# In your agent loop
-recorder.record_llm_call(
-    prompt=user_message,
-    response=llm_response,
-    duration_ms=450,
-    cost_usd=0.003,
-    tokens={"input": 120, "output": 80},
-)
-recorder.record_tool_call("search_kb", {"query": "refund policy"}, result)
-recorder.record_decision("escalate", reasoning="user expressed anger 3 times")
-recorder.complete(status="completed")
-```
-
-Then replay any session:
-
-```bash
-agentbox sessions
-agentbox replay abc123
-```
-
-```
-⬡ AgentBox — Replaying session: abc123
-
-  → Agent: my-support-agent v0.1.0
-  → Cost: $0.0042
-
-  [1] 🤖 llm_call (312ms) ($0.0018)
-      prompt: Hello, I need help with my order
-      response: Hi! I'd be happy to help. Could you share your order number?
-  [2] 🔧 tool_call
-      tool: search_kb
-      args: {"query": "order lookup"}
-  [3] 💡 decision
-      decision: escalate
-      reasoning: user expressed anger 3 times
+Observe:
+  sessions                List recorded sessions
+  replay <session-id>     Replay a recorded session
+  scan [directory]        Discover agents in codebase
 ```
 
 ---
 
-## Shadow Agent Scanner
+## How it compares
 
-Find every AI agent lurking in a codebase — before someone else does:
+| | AgentBox | LangSmith | Langfuse | Helicone | AgentOps |
+|---|---|---|---|---|---|
+| Tracing & evals | ✅ basic | ✅ deep | ✅ deep | ✅ basic | ✅ deep |
+| Cost tracking | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Active enforcement** | ✅ proxy blocks | ❌ passive | ❌ passive | ❌ passive | ❌ passive |
+| **Cryptographic seal** | ✅ `agent.lock` | ❌ | ❌ | ❌ | ❌ |
+| **Provider-drift probe** | ✅ probe hash | ❌ | ❌ | ❌ | ❌ |
+| **EU AI Act docs** | ✅ Annex IV gen | ❌ | ❌ | ❌ | ❌ |
+| Open source | ✅ Apache 2.0 | ❌ | ✅ | ✅ partial | ✅ partial |
+| Framework lock-in | ❌ none | LangChain-first | none | none | none |
 
-```bash
-agentbox scan ./backend
-```
-
-```
-  → Files scanned: 847
-  → Agents found: 12
-
-  FILE                          LINE  FRAMEWORK   MODEL           TOOLS  GUARDRAILS
-  ─────────────────────────────────────────────────────────────────────────────────
-  services/support/agent.py      23   anthropic   claude-sonnet   ✓      ✗
-  scripts/bulk_email.py          11   openai_sdk  gpt-4o          ✗      ✗
-  workflows/data_pipeline.py     44   langchain   unknown         ✓      ✗
-  ...
-
-  ⚠  9 ungoverned agents found (no guardrails detected)
-```
-
-Detects: LangChain, CrewAI, AutoGen, OpenAI SDK, Anthropic SDK, LlamaIndex, DSPy.
-
----
-
-## Version Control & Rollback
-
-```bash
-# Ship a new prompt
-agentbox tag v1.1.0
-
-# Something broke in prod?
-agentbox rollback v1.0.3
-# Current state is auto-saved as pre-rollback-{timestamp} before restoring
-```
-
----
-
-## Manifest Reference
-
-```yaml
-name: string                     # Required. Agent name
-version: string                  # Required. Semantic version
-description: string              # Optional. Human-readable description
-model: string                    # Required. Model ID
-framework: string                # Required. langchain|crewai|autogen|openai|anthropic|custom
-system_prompt: string            # Optional. Inline or file:// path
-entry_point: string              # Optional. Python module:function
-
-tools:
-  - name: string                 # Tool identifier
-    type: builtin|mcp|api|function
-    endpoint: string             # For type: api or mcp
-    auth: ENV_VAR_NAME           # Env var holding the auth token
-
-guardrails:
-  - name: string
-    rule: must_not_contain|max_cost_usd|max_latency_ms|...
-    value: string
-
-memory: none|conversation|summary|vector
-eval_suite: ./evals/test_suite.yaml
-```
+**Position:** AgentBox is the declarative spec / governance layer. Existing observability tools are dashboards. They're complementary, not competing.
 
 ---
 
 ## Roadmap
 
-- [ ] **AgentBox Registry** — Push/pull agent manifests like Docker images (`agentbox push`, `agentbox pull`)
-- [ ] **Cloud Dashboard** — Web UI for teams: session explorer, eval trends, cost tracking
-- [ ] **`agentbox deploy`** — One-command deployment to major agent hosting platforms
-- [ ] **Live cost alerting** — Slack/email alerts when session cost exceeds threshold
-- [ ] **SBOM for agents** — Software Bill of Materials: every model, tool, and prompt in one audit trail
-- [ ] **MCP manifest support** — First-class Model Context Protocol tool declarations
-- [ ] **GitHub Action** — `agentbox test` in CI, fail PRs that break evals
+**v0.2.0 (this release)** — seal, guard, compliance. EU AI Act Annex IV.
+**v0.2.1** — streaming proxy support. Pricing-table refresh GitHub Action. Wider PII regex coverage.
+**v0.2.x** — NIST AI RMF and ISO/IEC 42001 compliance templates.
+**v0.3** — `simulate` (cost dry-run with synthetic input distribution); `drift` (daily baseline comparison); AST-based scanner.
+**v0.4** — `build --target {openai-agents-sdk, crewai}` compiler; AgentBox Hub registry.
 
 ---
 
 ## Contributing
 
-AgentBox is Apache 2.0 licensed and actively looking for contributors.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ```bash
 git clone https://github.com/CharanBharathula/agentbox
 cd agentbox
 pip install -e ".[dev]"
-pytest
+pytest tests/ -q          # 121 tests, ~3 seconds
+ruff check agentbox/ tests/
 ```
 
-Areas where help is needed:
-- Framework detection patterns (LlamaIndex, DSPy, Haystack, Semantic Kernel)
-- Eval runner integrations (run against real agent endpoints)
-- Registry design (manifest format spec)
-
-Open an issue or PR on GitHub.
+We're especially looking for help with:
+- Additional compliance templates (NIST AI RMF, ISO/IEC 42001)
+- PII detection improvements (international formats, obfuscation evasion)
+- Streaming proxy support
+- Risk classifier rules for non-US jurisdictions
 
 ---
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE).
+[Apache 2.0](LICENSE) — use it commercially, fork it, embed it. Just keep the notice.
 
-Built by [CharanBharathula](https://github.com/CharanBharathula). Inspired by Docker, but for the AI agent era.
+Built by [@CharanBharathula](https://github.com/CharanBharathula).
+The `agent.lock` format is a public spec; we want it on every agent in production.

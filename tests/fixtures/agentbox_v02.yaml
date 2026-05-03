@@ -1,0 +1,76 @@
+apiVersion: agentbox/v0.2
+kind: Agent
+
+agent:
+  name: support-agent
+  version: 0.3.1
+  description: "Tier-1 customer support agent"
+  author: "platform-team@example.com"
+  license: Apache-2.0
+  tags: [support, external]
+
+  framework: anthropic
+  model:
+    provider: anthropic
+    name: claude-sonnet-4-5-20251022
+    pinned_version: claude-sonnet-4-5-20251022
+    temperature: 0.2
+    max_tokens: 4096
+
+  system_prompt: |
+    You are a Tier-1 customer support agent for ACME Corp.
+
+  tools:
+    - name: search_kb
+      type: function
+      module: app.tools:search_kb
+    - name: create_ticket
+      type: api
+      endpoint: https://api.helpdesk.example.com/tickets
+      auth: HELPDESK_TOKEN
+
+  guardrails:
+    cost:
+      max_usd_per_session: 0.50
+      max_usd_per_call: 0.10
+      action: block
+    iterations:
+      max_llm_calls: 25
+      action: block
+    tools:
+      allowlist: [search_kb, create_ticket]
+      require_approval: [create_ticket]
+    pii:
+      patterns: [SSN, EMAIL, CREDIT_CARD]
+      action: redact
+      direction: both
+    rate:
+      max_calls_per_minute: 60
+
+  memory: session
+
+  entry_point:
+    command: "python -m app.support_agent"
+    cwd: "."
+    env_vars:
+      - ANTHROPIC_API_KEY
+      - HELPDESK_TOKEN
+
+  eval_suite: ./evals/test_suite.yaml
+
+  compliance:
+    risk_class: limited
+    affected_users: external_consumers
+    human_oversight: review_required
+    intended_purpose: |
+      Resolves Tier-1 customer support inquiries about order status,
+      refunds (under $50), and FAQ topics. Escalates everything else.
+    out_of_scope:
+      - medical advice
+      - legal advice
+      - financial advice
+    data_handling:
+      processes_pii: true
+      pii_categories: [name, email, order_id]
+      retention_days: 30
+      data_residency: us-east-1

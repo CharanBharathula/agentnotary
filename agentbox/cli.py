@@ -78,6 +78,32 @@ def print_table(headers, rows):
         print(f"  {row_str}")
 
 
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+
+def _count_guardrails(manifest) -> str:
+    """Human-friendly guardrail count for v0.1 (legacy list) and v0.2 (typed spec)."""
+    if manifest.guardrail_spec is not None:
+        spec = manifest.guardrail_spec
+        active = []
+        if spec.cost.max_usd_per_session is not None or spec.cost.max_usd_per_call is not None:
+            active.append("cost")
+        if spec.iterations.max_llm_calls is not None or spec.iterations.max_tool_calls is not None:
+            active.append("iterations")
+        if spec.tools.allowlist or spec.tools.denylist or spec.tools.require_approval:
+            active.append("tools")
+        if spec.pii.patterns or spec.pii.action != "redact":
+            active.append("pii")
+        if spec.content.max_input_tokens is not None or spec.content.blocked_phrases_file:
+            active.append("content")
+        if spec.rate.max_calls_per_minute is not None or spec.rate.max_calls_per_session is not None:
+            active.append("rate")
+        if active:
+            return f"{len(active)} typed ({', '.join(active)})"
+        return "0 (typed block declared but empty)"
+    return str(len(manifest.guardrails))
+
+
 # ── Commands ──────────────────────────────────────────────────────────────────
 
 def cmd_init(args):
@@ -92,7 +118,7 @@ def cmd_init(args):
     if manifest_path.exists():
         print_warn("agentbox.yaml already exists. Skipping.")
     else:
-        manifest_path.write_text(generate_default_manifest(name))
+        manifest_path.write_text(generate_default_manifest(name), encoding="utf-8")
         print_success("Created agentbox.yaml")
 
     # Create directories
@@ -102,13 +128,13 @@ def cmd_init(args):
     # Create eval template
     eval_path = Path("evals/test_suite.yaml")
     if not eval_path.exists():
-        eval_path.write_text(generate_eval_template())
+        eval_path.write_text(generate_eval_template(), encoding="utf-8")
         print_success("Created evals/test_suite.yaml")
 
     # Create .gitignore
     gitignore = Path(".agentbox/.gitignore")
     if not gitignore.exists():
-        gitignore.write_text("sessions/\n")
+        gitignore.write_text("sessions/\n", encoding="utf-8")
         print_success("Created .agentbox/.gitignore")
 
     print()
@@ -133,10 +159,10 @@ def cmd_validate(args):
     issues = validate_manifest(manifest)
 
     print_info(f"Agent: {BOLD}{manifest.name}{RESET} v{manifest.version}")
-    print_info(f"Model: {manifest.model}")
+    print_info(f"Model: {manifest.effective_model}")
     print_info(f"Framework: {manifest.framework}")
     print_info(f"Tools: {len(manifest.tools)}")
-    print_info(f"Guardrails: {len(manifest.guardrails)}")
+    print_info(f"Guardrails: {_count_guardrails(manifest)}")
     print_info(f"Memory: {manifest.memory}")
     print()
 
@@ -433,11 +459,11 @@ def cmd_info(args):
     print(f"  {BOLD}Version:{RESET}     {manifest.version}")
     print(f"  {BOLD}Description:{RESET} {manifest.description}")
     print(f"  {BOLD}Framework:{RESET}   {manifest.framework}")
-    print(f"  {BOLD}Model:{RESET}       {manifest.model}")
+    print(f"  {BOLD}Model:{RESET}       {manifest.effective_model}")
     print(f"  {BOLD}Temp:{RESET}        {manifest.temperature}")
     print(f"  {BOLD}Memory:{RESET}      {manifest.memory}")
     print(f"  {BOLD}Tools:{RESET}       {len(manifest.tools)}")
-    print(f"  {BOLD}Guardrails:{RESET}  {len(manifest.guardrails)}")
+    print(f"  {BOLD}Guardrails:{RESET}  {_count_guardrails(manifest)}")
     print(f"  {BOLD}Tags:{RESET}        {', '.join(manifest.tags) if manifest.tags else 'none'}")
     print(f"  {BOLD}Author:{RESET}      {manifest.author or 'not set'}")
 
@@ -445,6 +471,206 @@ def cmd_info(args):
         preview = manifest.system_prompt[:100].replace('\n', ' ')
         print(f"  {BOLD}Prompt:{RESET}      {DIM}{preview}...{RESET}")
 
+    print()
+    return 0
+
+
+# ── v0.2 commands: seal, guard, compliance ─────────────────────────────────────
+
+def cmd_seal(args):
+    """Generate or verify agent.lock — cryptographic reproducibility seal."""
+    from agentbox.seal import diff_seals, load_lock, seal_agent, verify_seal, write_lock
+
+    if args and args[0] == "--verify":
+        print_header("Verifying agent.lock")
+        result = verify_seal(".")
+        if result.ok:
+            print_success(result.summary)
+            return 0
+        print_error(result.summary)
+        for d in result.diffs[:20]:
+            kind_colors = {"added": GREEN, "removed": RED, "changed": YELLOW}
+            color = kind_colors.get(d.kind, DIM)
+            print(f"  {color}{d.kind:>8}{RESET} {d.path}")
+            if d.before is not None:
+                print(f"           {DIM}before:{RESET} {(d.before or '')[:80]}")
+            if d.after is not None:
+                print(f"           {DIM}after: {RESET} {(d.after or '')[:80]}")
+        if len(result.diffs) > 20:
+            print_dim(f"  ... and {len(result.diffs) - 20} more changes")
+        return 1
+
+    if args and args[0] == "diff" and len(args) >= 2:
+        print_header(f"Diffing agent.lock vs {args[1]}")
+        a = load_lock(".")
+        from pathlib import Path
+        other_dir = Path(args[1]).parent if Path(args[1]).is_file() else Path(args[1])
+        b = load_lock(str(other_dir))
+        diffs = diff_seals(a, b)
+        if not diffs:
+            print_success("No differences.")
+            return 0
+        for d in diffs:
+            color = {"added": GREEN, "removed": RED, "changed": YELLOW}.get(d.kind, DIM)
+            print(f"  {color}{d.kind:>8}{RESET} {d.path}")
+            if d.before is not None:
+                print(f"           {DIM}before:{RESET} {(d.before or '')[:80]}")
+            if d.after is not None:
+                print(f"           {DIM}after: {RESET} {(d.after or '')[:80]}")
+        return 0
+
+    probe = "--probe" in args
+    print_header("Sealing agent" + (" (with provider probe)" if probe else ""))
+    try:
+        lock = seal_agent(".", probe=probe)
+        path = write_lock(lock, ".")
+    except FileNotFoundError as e:
+        print_error(str(e))
+        return 1
+
+    print_success(f"Wrote {path.name}")
+    print_info(f"Seal hash:    {lock.seal_hash[:24]}...")
+    print_info(f"Manifest:     {lock.manifest.get('sha256', '')[:24]}...")
+    print_info(f"Prompts:      {len(lock.prompts)}")
+    print_info(f"Tools:        {len(lock.tools)}")
+    print_info(f"Datasets:     {len(lock.datasets)}")
+    if lock.model.get("probe_response_hash"):
+        print_info(f"Probe hash:   {lock.model['probe_response_hash'][:24]}...")
+    elif lock.model.get("probe_skipped_reason"):
+        print_dim(f"  Probe: {lock.model['probe_skipped_reason']}")
+    if lock.non_deterministic:
+        print()
+        print_warn(f"{len(lock.non_deterministic)} non-determinism caveat(s) recorded:")
+        for n in lock.non_deterministic[:3]:
+            print(f"    {DIM}- {n[:100]}...{RESET}")
+        if len(lock.non_deterministic) > 3:
+            print_dim(f"    ... and {len(lock.non_deterministic) - 3} more (see agent.lock)")
+    print()
+    print_info(f"Verify with: {BOLD}agentbox seal --verify{RESET}")
+    print()
+    return 0
+
+
+def cmd_guard(args):
+    """Run an agent under runtime governance — blocks runaway loops, enforces caps."""
+    from agentbox.guard import run_under_guard
+    from agentbox.manifest import parse_manifest
+
+    if not args or args[0] != "run":
+        print_error("Usage: agentbox guard run -- <command> [args...]")
+        print_info("Example: agentbox guard run -- python -m my_agent")
+        return 1
+
+    # Strip the optional "--" separator
+    cmd_args = args[1:]
+    if cmd_args and cmd_args[0] == "--":
+        cmd_args = cmd_args[1:]
+
+    if not cmd_args:
+        print_error("Missing agent command after `agentbox guard run --`.")
+        return 1
+
+    print_header(f"Guard: wrapping {' '.join(cmd_args)}")
+    try:
+        manifest = parse_manifest(".")
+    except (FileNotFoundError, ValueError) as e:
+        print_error(str(e))
+        return 1
+
+    if not manifest.guardrail_spec:
+        print_warn("No typed guardrails declared. Guard will record but not enforce.")
+        print_info(f"Add typed guardrails to agentbox.yaml — see {BOLD}agentbox info{RESET}")
+
+    result = run_under_guard(manifest, cmd_args, base_dir=".")
+
+    print()
+    if result.blocked:
+        print_error(f"Guard BLOCKED the agent: {result.block_reason}")
+    else:
+        print_success(f"Agent exited with code {result.exit_code}")
+
+    s = result.summary
+    print_info(f"Session:        {result.session_id}")
+    print_info(f"LLM calls:      {s.get('llm_calls', 0)}")
+    print_info(f"Tool calls:     {s.get('tool_calls', 0)}")
+    print_info(f"Total cost:     ${s.get('session_cost_usd', 0):.4f}")
+    print_info(f"Duration:       {s.get('session_seconds', 0):.1f}s")
+    print()
+    return result.exit_code
+
+
+def cmd_compliance(args):
+    """Generate regulatory compliance documentation from manifest + seal + sessions."""
+    from agentbox.compliance import check, generate
+    from agentbox.manifest import parse_manifest
+
+    standard = "eu-ai-act"
+    output = "./compliance"
+    fmt = "all"
+    check_only = False
+
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--standard" and i + 1 < len(args):
+            standard = args[i + 1]
+            i += 2
+        elif a == "--output" and i + 1 < len(args):
+            output = args[i + 1]
+            i += 2
+        elif a == "--format" and i + 1 < len(args):
+            fmt = args[i + 1]
+            i += 2
+        elif a == "--check":
+            check_only = True
+            i += 1
+        else:
+            print_error(f"Unknown flag: {a}")
+            return 1
+
+    print_header(f"Compliance: {standard}")
+
+    try:
+        manifest = parse_manifest(".")
+    except (FileNotFoundError, ValueError) as e:
+        print_error(str(e))
+        return 1
+
+    if check_only:
+        issues = check(manifest)
+        if not issues:
+            print_success("Manifest has all required fields for compliance generation.")
+            return 0
+        errors = [i for i in issues if i.severity == "error"]
+        for issue in issues:
+            if issue.severity == "error":
+                print_error(f"{issue.field}: {issue.message}")
+            elif issue.severity == "warning":
+                print_warn(f"{issue.field}: {issue.message}")
+            else:
+                print_dim(f"  {issue.field}: {issue.message}")
+        return 1 if errors else 0
+
+    try:
+        result = generate(".", standard, output, format=fmt)
+    except ValueError as e:
+        print_error(str(e))
+        return 1
+
+    print_info(f"Risk class: {BOLD}{result.risk.risk_class.upper()}{RESET}")
+    print_dim(f"  {result.risk.summary}")
+    print()
+    for f in result.files_written:
+        print_success(f"Wrote {f}")
+    if result.issues:
+        print()
+        for issue in result.issues:
+            if issue.severity == "error":
+                print_error(f"{issue.field}: {issue.message}")
+            elif issue.severity == "warning":
+                print_warn(f"{issue.field}: {issue.message}")
+    print()
+    print_warn("Documentation is a SCAFFOLD ONLY — review by qualified counsel required.")
     print()
     return 0
 
@@ -462,36 +688,51 @@ COMMANDS = {
     "rollback": cmd_rollback,
     "scan": cmd_scan,
     "info": cmd_info,
+    # v0.2 — the differentiated wedge
+    "seal": cmd_seal,
+    "guard": cmd_guard,
+    "compliance": cmd_compliance,
 }
 
 
 def print_usage():
     print(f"""
-{BOLD}{CYAN}⬡ AgentBox{RESET} — Docker for AI Agents
-{DIM}Package, test, version, and deploy AI agents.{RESET}
+{BOLD}{CYAN}⬡ AgentBox{RESET} — The declarative governance spec for AI agents
+{DIM}Declare → Seal → Enforce → Document.{RESET}
 
 {BOLD}Usage:{RESET}
   agentbox <command> [options]
 
-{BOLD}Commands:{RESET}
+{BOLD}Govern (v0.2):{RESET}
+  {GREEN}seal{RESET} [--probe]          Lock the agent into a reproducible snapshot (agent.lock)
+  {GREEN}seal --verify{RESET}           Verify nothing has drifted since the last seal
+  {GREEN}guard run -- <cmd>{RESET}      Run an agent under runtime enforcement
+  {GREEN}compliance{RESET}              Generate regulatory documentation (EU AI Act, ...)
+
+{BOLD}Develop:{RESET}
   {GREEN}init{RESET} [name]             Create a new agent project
   {GREEN}validate{RESET}                Validate agent manifest
   {GREEN}test{RESET} [--verbose]        Run eval suite
+  {GREEN}info{RESET}                    Show current agent details
+
+{BOLD}Versioning:{RESET}
   {GREEN}tag{RESET} <version>           Tag current state (e.g., v1.0.0)
-  {GREEN}versions{RESET}               List all tagged versions
+  {GREEN}versions{RESET}                List all tagged versions
   {GREEN}rollback{RESET} <version>      Restore a tagged version
-  {GREEN}sessions{RESET}               List recorded sessions
+
+{BOLD}Observe:{RESET}
+  {GREEN}sessions{RESET}                List recorded sessions
   {GREEN}replay{RESET} <session-id>     Replay a recorded session
   {GREEN}scan{RESET} [directory]        Discover agents in codebase
-  {GREEN}info{RESET}                   Show current agent details
 
 {BOLD}Get started:{RESET}
   agentbox init my-agent
   cd my-agent
-  agentbox test
-  agentbox tag v0.1.0
+  agentbox seal
+  agentbox guard run -- python my_agent.py
+  agentbox compliance --standard eu-ai-act --output ./docs
 
-{DIM}https://agentbox.dev{RESET}
+{DIM}https://github.com/CharanBharathula/agentbox{RESET}
 """)
 
 
