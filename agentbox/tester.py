@@ -5,14 +5,13 @@ Runs eval suites against agents to verify behavior before deployment.
 Like unit tests for AI agents.
 """
 
-import yaml
 import json
-import time
 import os
-import sys
-from pathlib import Path
+import time
 from dataclasses import dataclass
-from typing import Optional
+from pathlib import Path
+
+import yaml
 
 
 @dataclass
@@ -83,8 +82,6 @@ class AgentTestRunner:
         expected = eval_case.get("expected_behavior", "")
         max_latency = eval_case.get("max_latency_ms", 30000)
         max_cost = eval_case.get("max_cost_usd", 1.0)
-        must_call = eval_case.get("must_call_tools", [])
-        must_not_call = eval_case.get("must_not_call_tools", [])
 
         if not self.llm:
             # Dry run mode — validate structure only

@@ -1,14 +1,14 @@
 """Tests for agent version management."""
 
-import pytest
 import json
-from pathlib import Path
+
+import pytest
 
 from agentbox.versioner import (
     compute_agent_hash,
-    tag_version,
     list_versions,
     rollback_to,
+    tag_version,
 )
 
 MANIFEST = """\

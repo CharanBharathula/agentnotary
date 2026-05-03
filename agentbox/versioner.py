@@ -4,9 +4,9 @@ AgentBox Version Manager
 Version, tag, and rollback AI agents.
 """
 
+import hashlib
 import json
 import shutil
-import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 

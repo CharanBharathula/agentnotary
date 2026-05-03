@@ -6,8 +6,8 @@ Discovers AI agents in a codebase — finds shadow agents across frameworks.
 
 import os
 import re
+from dataclasses import dataclass
 from pathlib import Path
-from dataclasses import dataclass, field
 
 
 @dataclass

@@ -4,12 +4,11 @@ AgentBox Manifest Parser
 Parses and validates agentbox.yaml — the Dockerfile-equivalent for AI agents.
 """
 
-import yaml
-import os
-import json
 from dataclasses import dataclass, field
-from typing import Optional
 from pathlib import Path
+from typing import Optional
+
+import yaml
 
 MANIFEST_FILENAME = "agentbox.yaml"
 

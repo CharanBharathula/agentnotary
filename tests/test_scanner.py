@@ -1,10 +1,9 @@
 """Tests for the codebase agent scanner."""
 
+
 import pytest
-from pathlib import Path
 
-from agentbox.scanner import scan_file, scan_directory, format_scan_results, DiscoveredAgent
-
+from agentbox.scanner import format_scan_results, scan_directory, scan_file
 
 LANGCHAIN_SAMPLE = """\
 from langchain.agents import AgentExecutor, create_react_agent

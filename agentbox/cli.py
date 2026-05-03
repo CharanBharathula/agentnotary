@@ -18,9 +18,8 @@ Usage:
     agentbox info                 Show current agent info
 """
 
-import sys
 import os
-import json
+import sys
 from pathlib import Path
 
 # Ensure Unicode output works on Windows terminals
@@ -113,7 +112,7 @@ def cmd_init(args):
         print_success("Created .agentbox/.gitignore")
 
     print()
-    print_info(f"Edit agentbox.yaml to configure your agent")
+    print_info("Edit agentbox.yaml to configure your agent")
     print_info(f"Run {BOLD}agentbox test{RESET} to evaluate")
     print_info(f"Run {BOLD}agentbox tag v0.1.0{RESET} to save a version")
     print()
@@ -367,7 +366,7 @@ def cmd_rollback(args):
 
 def cmd_scan(args):
     """Scan a directory for AI agents."""
-    from agentbox.scanner import scan_directory, format_scan_results
+    from agentbox.scanner import format_scan_results, scan_directory
 
     target = args[0] if args else "."
     print_header(f"Scanning for agents in: {os.path.abspath(target)}")

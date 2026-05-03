@@ -1,12 +1,10 @@
 """Smoke tests for CLI commands."""
 
-import pytest
-import sys
-from pathlib import Path
 from unittest.mock import patch
 
-from agentbox.cli import main
+import pytest
 
+from agentbox.cli import main
 
 MANIFEST = """\
 agent:

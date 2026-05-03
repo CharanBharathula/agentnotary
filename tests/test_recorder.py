@@ -1,7 +1,8 @@
 """Tests for the session recorder / flight recorder."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from agentbox.recorder import SessionRecorder, list_sessions, load_session
 

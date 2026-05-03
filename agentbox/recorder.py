@@ -5,15 +5,13 @@ Records every agent action for replay, debugging, and audit.
 Like a flight recorder for AI agents.
 """
 
-import json
-import time
-import uuid
 import hashlib
+import json
+import uuid
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from dataclasses import dataclass, field, asdict
 from typing import Optional
-
 
 SESSIONS_DIR = ".agentbox/sessions"
 
