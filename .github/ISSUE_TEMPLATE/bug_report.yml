@@ -1,5 +1,5 @@
 name: Bug report
-description: Report something that's broken in AgentBox
+description: Report something that's broken in AgentNotary
 labels: ["bug"]
 body:
   - type: markdown
@@ -10,8 +10,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: AgentBox version
-      description: Output of `agentbox --help` or your `pyproject.toml` pin
+      label: AgentNotary version
+      description: Output of `agentnotary --help` or your `pyproject.toml` pin
       placeholder: "0.2.0"
     validations:
       required: true
@@ -51,7 +51,7 @@ body:
   - type: textarea
     id: manifest
     attributes:
-      label: Relevant `agentbox.yaml` (redacted)
+      label: Relevant `agentnotary.yaml` (redacted)
       description: Paste the manifest (or the relevant block). Strip any secrets.
       render: yaml
 

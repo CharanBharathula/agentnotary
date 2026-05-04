@@ -1,10 +1,10 @@
-"""Tests for agentbox.seal — fingerprinting and lockfile."""
+"""Tests for agentnotary.seal — fingerprinting and lockfile."""
 
 from pathlib import Path
 
 import pytest
 
-from agentbox.seal import (
+from agentnotary.seal import (
     diff_seals,
     hash_bytes,
     hash_file,
@@ -14,19 +14,19 @@ from agentbox.seal import (
     verify_seal,
     write_lock,
 )
-from agentbox.seal.fingerprint import (
+from agentnotary.seal.fingerprint import (
     _normalize_yaml,
     fingerprint_dependencies,
     fingerprint_manifest,
     fingerprint_prompt,
 )
 
-FIXTURE = Path(__file__).parent / "fixtures" / "agentbox_v02.yaml"
+FIXTURE = Path(__file__).parent / "fixtures" / "agentnotary_v02.yaml"
 
 
 @pytest.fixture
 def sealed_dir(tmp_path):
-    (tmp_path / "agentbox.yaml").write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / "agentnotary.yaml").write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
     (tmp_path / "prompts").mkdir()
     (tmp_path / "prompts" / "system.md").write_text(
         "You are the support agent.", encoding="utf-8"
@@ -36,7 +36,7 @@ def sealed_dir(tmp_path):
         "evals:\n  - name: greet\n    input: hi\n    expected_behavior: greets back\n",
         encoding="utf-8",
     )
-    (tmp_path / ".agentbox" / "sessions").mkdir(parents=True)
+    (tmp_path / ".agentnotary" / "sessions").mkdir(parents=True)
     return tmp_path
 
 
@@ -82,7 +82,7 @@ def test_normalize_yaml_ignores_key_order():
 
 
 def test_fingerprint_manifest_has_both_hashes(sealed_dir):
-    fp = fingerprint_manifest(sealed_dir / "agentbox.yaml")
+    fp = fingerprint_manifest(sealed_dir / "agentnotary.yaml")
     assert fp["sha256"] is not None
     assert fp["normalized_sha256"] is not None
     assert fp["bytes"] > 0
@@ -179,7 +179,7 @@ def test_verify_seal_detects_manifest_change(sealed_dir):
     lock = seal_agent(str(sealed_dir))
     write_lock(lock, str(sealed_dir))
     # Mutate the manifest semantically
-    p = sealed_dir / "agentbox.yaml"
+    p = sealed_dir / "agentnotary.yaml"
     p.write_text(p.read_text(encoding="utf-8") + "\n# breaking change\n", encoding="utf-8")
     # Force a real semantic diff so normalized hash also changes
     p.write_text(p.read_text(encoding="utf-8").replace("temperature: 0.2", "temperature: 0.5"),

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AgentBox — Docker for AI Agents</title>
-  <meta name="description" content="Package, test, version, and govern your AI agents — across every framework. Open-source CLI." />
+  <title>AgentNotary — Notarize, govern, and audit AI agents</title>
+  <meta name="description" content="Notarize, govern, and audit AI agents — open-source CLI for cryptographic seal, runtime enforcement, EU AI Act compliance docs, AI-BOM, and adversarial fuzzing." />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -280,34 +280,34 @@
 
 <!-- Nav -->
 <nav>
-  <div class="nav-logo">⬡ <span>AgentBox</span></div>
+  <div class="nav-logo">⬡ <span>AgentNotary</span></div>
   <div class="nav-links">
     <a href="#features">Features</a>
     <a href="#commands">Commands</a>
     <a href="#demo">Demo</a>
-    <a href="https://github.com/CharanBharathula/agentbox">GitHub</a>
+    <a href="https://github.com/CharanBharathula/agentnotary">GitHub</a>
   </div>
-  <a class="nav-cta" href="https://github.com/CharanBharathula/agentbox">Get Started →</a>
+  <a class="nav-cta" href="https://github.com/CharanBharathula/agentnotary">Get Started →</a>
 </nav>
 
 <!-- Hero -->
 <section class="hero">
-  <div class="badge">Open Source · Apache 2.0 · <b>v0.2.0</b></div>
+  <div class="badge">Open Source · Apache 2.0 · <b>v0.3.0</b></div>
   <h1>
-    The <em>declarative governance spec</em><br />for AI agents
+    <em>Notarize, govern,</em><br />and audit AI agents
   </h1>
   <p class="hero-sub">
-    <strong>Declare → Seal → Enforce → Document.</strong><br/>
-    Three commands turn agentbox.yaml into a sealed, runtime-enforced,
+    <strong>Notarize → Enforce → Certify.</strong><br/>
+    Three commands turn agentnotary.yaml into a sealed, runtime-enforced,
     audit-ready agent. Open source. Framework-agnostic.
   </p>
   <div class="hero-actions">
-    <a class="btn-primary" href="https://github.com/CharanBharathula/agentbox">View on GitHub</a>
+    <a class="btn-primary" href="https://github.com/CharanBharathula/agentnotary">View on GitHub</a>
     <a class="btn-secondary" href="#demo">See the Demo</a>
   </div>
   <div class="install-bar">
     <div class="install-box">
-      <span>$</span> pip install agentbox
+      <span>$</span> pip install agentnotary
     </div>
   </div>
 </section>
@@ -334,7 +334,7 @@
     </div>
     <div class="stat">
       <div class="stat-num">0</div>
-      <div class="stat-desc">standardized formats for agent configuration before AgentBox</div>
+      <div class="stat-desc">standardized formats for agent configuration before AgentNotary</div>
     </div>
   </div>
 
@@ -342,33 +342,33 @@
     <thead>
       <tr>
         <th>Problem</th>
-        <th>AgentBox Solution</th>
+        <th>AgentNotary Solution</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td>"What agent is running in prod?"</td>
-        <td><span class="check">✓</span> <code>agentbox.yaml</code> + <code>agent.lock</code> — sealed snapshot</td>
+        <td><span class="check">✓</span> <code>agentnotary.yaml</code> + <code>agent.lock</code> — sealed snapshot</td>
       </tr>
       <tr>
         <td>"Why did the agent burn $4,000 overnight?"</td>
-        <td><span class="check">✓</span> <code>agentbox guard run</code> — would have blocked it at $1.00</td>
+        <td><span class="check">✓</span> <code>agentnotary guard run</code> — would have blocked it at $1.00</td>
       </tr>
       <tr>
         <td>"Did the prompt or the model drift?"</td>
-        <td><span class="check">✓</span> <code>agentbox seal --verify</code> — fails CI on drift</td>
+        <td><span class="check">✓</span> <code>agentnotary seal --verify</code> — fails CI on drift</td>
       </tr>
       <tr>
         <td>"We need EU AI Act docs by August 2026"</td>
-        <td><span class="check">✓</span> <code>agentbox compliance --standard eu-ai-act</code></td>
+        <td><span class="check">✓</span> <code>agentnotary compliance --standard eu-ai-act</code></td>
       </tr>
       <tr>
         <td>"Why did the agent make that decision?"</td>
-        <td><span class="check">✓</span> <code>agentbox replay &lt;session-id&gt;</code> — flight recorder</td>
+        <td><span class="check">✓</span> <code>agentnotary replay &lt;session-id&gt;</code> — flight recorder</td>
       </tr>
       <tr>
         <td>"How many shadow agents are in this codebase?"</td>
-        <td><span class="check">✓</span> <code>agentbox scan ./src</code> — finds all frameworks</td>
+        <td><span class="check">✓</span> <code>agentnotary scan ./src</code> — finds all frameworks</td>
       </tr>
     </tbody>
   </table>
@@ -387,7 +387,7 @@
       <div class="feature-icon">📋</div>
       <div class="feature-title">Agent Manifest</div>
       <div class="feature-desc">
-        <code>agentbox.yaml</code> is the Dockerfile for agents. Declares model, framework,
+        <code>agentnotary.yaml</code> is the Dockerfile for agents. Declares model, framework,
         tools, guardrails, memory, and evals in a single file.
       </div>
     </div>
@@ -396,15 +396,15 @@
       <div class="feature-title">Standardized Testing</div>
       <div class="feature-desc">
         Write YAML eval cases with expected behavior in natural language.
-        AgentBox uses an LLM-as-judge to grade pass/fail, latency, and cost.
+        AgentNotary uses an LLM-as-judge to grade pass/fail, latency, and cost.
       </div>
     </div>
     <div class="feature-card">
       <div class="feature-icon">🏷️</div>
       <div class="feature-title">Version Control</div>
       <div class="feature-desc">
-        <code>agentbox tag v1.2.0</code> snapshots your manifest, prompts, and evals.
-        <code>agentbox rollback v1.1.0</code> restores any prior state instantly.
+        <code>agentnotary tag v1.2.0</code> snapshots your manifest, prompts, and evals.
+        <code>agentnotary rollback v1.1.0</code> restores any prior state instantly.
       </div>
     </div>
     <div class="feature-card">
@@ -449,25 +449,25 @@
       <div class="terminal-title">Terminal</div>
     </div>
     <div class="terminal-body">
-      <div><span class="t-prompt">$ </span><span class="t-cmd">pip install agentbox</span></div>
-      <div class="t-dim">Successfully installed agentbox-0.1.0</div>
+      <div><span class="t-prompt">$ </span><span class="t-cmd">pip install agentnotary</span></div>
+      <div class="t-dim">Successfully installed agentnotary-0.1.0</div>
       <br/>
-      <div><span class="t-prompt">$ </span><span class="t-cmd">agentbox init support-agent</span></div>
-      <div class="t-header">⬡ AgentBox — Initializing agent: support-agent</div>
+      <div><span class="t-prompt">$ </span><span class="t-cmd">agentnotary init support-agent</span></div>
+      <div class="t-header">⬡ AgentNotary — Initializing agent: support-agent</div>
       <br/>
-      <div class="t-success">  ✓ Created agentbox.yaml</div>
+      <div class="t-success">  ✓ Created agentnotary.yaml</div>
       <div class="t-success">  ✓ Created evals/test_suite.yaml</div>
-      <div class="t-success">  ✓ Created .agentbox/.gitignore</div>
+      <div class="t-success">  ✓ Created .agentnotary/.gitignore</div>
       <br/>
-      <div><span class="t-prompt">$ </span><span class="t-cmd">agentbox validate</span></div>
-      <div class="t-header">⬡ AgentBox — Validating agent manifest</div>
+      <div><span class="t-prompt">$ </span><span class="t-cmd">agentnotary validate</span></div>
+      <div class="t-header">⬡ AgentNotary — Validating agent manifest</div>
       <br/>
       <div>  <span style="color:#6c5ce7">→</span> Agent: <b>support-agent</b> v0.1.0</div>
       <div>  <span style="color:#6c5ce7">→</span> Model: claude-sonnet-4-20250514</div>
       <div class="t-warn">  ! WARNING: No system prompt defined</div>
       <br/>
-      <div><span class="t-prompt">$ </span><span class="t-cmd">agentbox test</span></div>
-      <div class="t-header">⬡ AgentBox — Running eval suite</div>
+      <div><span class="t-prompt">$ </span><span class="t-cmd">agentnotary test</span></div>
+      <div class="t-header">⬡ AgentNotary — Running eval suite</div>
       <br/>
       <div>  STATUS  TEST                   LATENCY   COST</div>
       <div>  ──────────────────────────────────────────</div>
@@ -477,12 +477,12 @@
       <br/>
       <div>  <span class="t-err">66.7% pass rate</span>  2 passed · 1 failed</div>
       <br/>
-      <div><span class="t-prompt">$ </span><span class="t-cmd">agentbox tag v0.1.0</span></div>
+      <div><span class="t-prompt">$ </span><span class="t-cmd">agentnotary tag v0.1.0</span></div>
       <div class="t-success">  ✓ Tagged v0.1.0</div>
       <div>  <span style="color:#6c5ce7">→</span> Hash: a3f7c912b441</div>
       <br/>
-      <div><span class="t-prompt">$ </span><span class="t-cmd">agentbox scan ./backend</span></div>
-      <div class="t-header">⬡ AgentBox — Scanning for agents in: ./backend</div>
+      <div><span class="t-prompt">$ </span><span class="t-cmd">agentnotary scan ./backend</span></div>
+      <div class="t-header">⬡ AgentNotary — Scanning for agents in: ./backend</div>
       <br/>
       <div>  <span style="color:#6c5ce7">→</span> Files scanned: 847</div>
       <div>  <span style="color:#6c5ce7">→</span> Agents found: 12</div>
@@ -507,43 +507,43 @@
 
   <div class="commands-grid">
     <div class="cmd-card">
-      <div class="cmd-name">agentbox init [name]</div>
+      <div class="cmd-name">agentnotary init [name]</div>
       <div class="cmd-desc">Scaffold a new agent project with manifest, evals, and directories</div>
     </div>
     <div class="cmd-card">
-      <div class="cmd-name">agentbox validate</div>
+      <div class="cmd-name">agentnotary validate</div>
       <div class="cmd-desc">Check the current manifest for errors, warnings, and missing fields</div>
     </div>
     <div class="cmd-card">
-      <div class="cmd-name">agentbox test</div>
+      <div class="cmd-name">agentnotary test</div>
       <div class="cmd-desc">Run the eval suite. Uses LLM-as-judge to grade expected behavior</div>
     </div>
     <div class="cmd-card">
-      <div class="cmd-name">agentbox tag &lt;version&gt;</div>
+      <div class="cmd-name">agentnotary tag &lt;version&gt;</div>
       <div class="cmd-desc">Snapshot manifest + prompts + evals as a named version</div>
     </div>
     <div class="cmd-card">
-      <div class="cmd-name">agentbox versions</div>
+      <div class="cmd-name">agentnotary versions</div>
       <div class="cmd-desc">List all tagged versions with hash and timestamp</div>
     </div>
     <div class="cmd-card">
-      <div class="cmd-name">agentbox rollback &lt;version&gt;</div>
+      <div class="cmd-name">agentnotary rollback &lt;version&gt;</div>
       <div class="cmd-desc">Restore a prior version. Auto-saves current state before rollback</div>
     </div>
     <div class="cmd-card">
-      <div class="cmd-name">agentbox sessions</div>
+      <div class="cmd-name">agentnotary sessions</div>
       <div class="cmd-desc">List recorded sessions with cost, token, and status summary</div>
     </div>
     <div class="cmd-card">
-      <div class="cmd-name">agentbox replay &lt;id&gt;</div>
+      <div class="cmd-name">agentnotary replay &lt;id&gt;</div>
       <div class="cmd-desc">Replay a session: every LLM call, tool use, and decision in order</div>
     </div>
     <div class="cmd-card">
-      <div class="cmd-name">agentbox scan [dir]</div>
+      <div class="cmd-name">agentnotary scan [dir]</div>
       <div class="cmd-desc">Find every AI agent in a codebase across 7 frameworks</div>
     </div>
     <div class="cmd-card">
-      <div class="cmd-name">agentbox info</div>
+      <div class="cmd-name">agentnotary info</div>
       <div class="cmd-desc">Show the current agent's configuration and status</div>
     </div>
   </div>
@@ -557,8 +557,8 @@
   <h2>Govern your agents.<br/>Before someone else does.</h2>
   <p>Apache 2.0 licensed. Contributions welcome. Follows the Docker monetization playbook — open-source CLI, cloud platform coming.</p>
   <div class="actions">
-    <a class="btn-primary" href="https://github.com/CharanBharathula/agentbox">Star on GitHub</a>
-    <a class="btn-secondary" href="https://github.com/CharanBharathula/agentbox/issues">Open an Issue</a>
+    <a class="btn-primary" href="https://github.com/CharanBharathula/agentnotary">Star on GitHub</a>
+    <a class="btn-secondary" href="https://github.com/CharanBharathula/agentnotary/issues">Open an Issue</a>
   </div>
 </section>
 
@@ -566,8 +566,8 @@
 <footer>
   <p>
     Built by <a href="https://github.com/CharanBharathula">CharanBharathula</a> ·
-    <a href="https://github.com/CharanBharathula/agentbox">GitHub</a> ·
-    <a href="https://github.com/CharanBharathula/agentbox/blob/main/LICENSE">License</a>
+    <a href="https://github.com/CharanBharathula/agentnotary">GitHub</a> ·
+    <a href="https://github.com/CharanBharathula/agentnotary/blob/main/LICENSE">License</a>
   </p>
 </footer>
 

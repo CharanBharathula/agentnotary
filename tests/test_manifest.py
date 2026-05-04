@@ -3,7 +3,7 @@
 
 import pytest
 
-from agentbox.manifest import (
+from agentnotary.manifest import (
     MANIFEST_FILENAME,
     AgentManifest,
     generate_default_manifest,

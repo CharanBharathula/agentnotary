@@ -44,8 +44,8 @@ nosetests.xml
 *~
 .DS_Store
 
-# AgentBox state (per-project)
-.agentbox/sessions/
+# AgentNotary state (per-project)
+.agentnotary/sessions/
 
 # Distribution
 dist/

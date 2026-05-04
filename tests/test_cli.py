@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from agentbox.cli import main
+from agentnotary.cli import main
 
 MANIFEST = """\
 agent:
@@ -24,7 +24,7 @@ def isolated_dir(tmp_path, monkeypatch):
 
 def run_cmd(*args):
     """Run CLI and return exit code."""
-    with patch("sys.argv", ["agentbox"] + list(args)):
+    with patch("sys.argv", ["agentnotary"] + list(args)):
         try:
             return main()
         except SystemExit as e:
@@ -33,7 +33,7 @@ def run_cmd(*args):
 
 def test_init_creates_manifest(isolated_dir):
     run_cmd("init", "my-agent")
-    assert (isolated_dir / "agentbox.yaml").exists()
+    assert (isolated_dir / "agentnotary.yaml").exists()
 
 
 def test_init_creates_evals_dir(isolated_dir):
@@ -50,11 +50,11 @@ def test_init_creates_prompts_dir(isolated_dir):
 def test_init_is_idempotent(isolated_dir):
     run_cmd("init", "my-agent")
     run_cmd("init", "my-agent")  # Should not raise or overwrite
-    assert (isolated_dir / "agentbox.yaml").exists()
+    assert (isolated_dir / "agentnotary.yaml").exists()
 
 
 def test_validate_clean_manifest(isolated_dir):
-    (isolated_dir / "agentbox.yaml").write_text(MANIFEST)
+    (isolated_dir / "agentnotary.yaml").write_text(MANIFEST)
     rc = run_cmd("validate")
     assert rc in (0, None)
 
@@ -65,7 +65,7 @@ def test_validate_missing_manifest(isolated_dir):
 
 
 def test_info_shows_agent_data(isolated_dir):
-    (isolated_dir / "agentbox.yaml").write_text(MANIFEST)
+    (isolated_dir / "agentnotary.yaml").write_text(MANIFEST)
     rc = run_cmd("info")
     assert rc in (0, None)
 
@@ -76,20 +76,20 @@ def test_info_missing_manifest(isolated_dir):
 
 
 def test_tag_creates_version(isolated_dir):
-    (isolated_dir / "agentbox.yaml").write_text(MANIFEST)
+    (isolated_dir / "agentnotary.yaml").write_text(MANIFEST)
     rc = run_cmd("tag", "v0.1.0")
     assert rc in (0, None)
-    assert (isolated_dir / ".agentbox" / "versions" / "v0.1.0").exists()
+    assert (isolated_dir / ".agentnotary" / "versions" / "v0.1.0").exists()
 
 
 def test_versions_empty(isolated_dir):
-    (isolated_dir / "agentbox.yaml").write_text(MANIFEST)
+    (isolated_dir / "agentnotary.yaml").write_text(MANIFEST)
     rc = run_cmd("versions")
     assert rc in (0, None)
 
 
 def test_rollback_missing_version(isolated_dir):
-    (isolated_dir / "agentbox.yaml").write_text(MANIFEST)
+    (isolated_dir / "agentnotary.yaml").write_text(MANIFEST)
     rc = run_cmd("rollback", "v99.0.0")
     assert rc == 1
 

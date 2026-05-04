@@ -4,12 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from agentbox.recorder import SessionRecorder, list_sessions, load_session
+from agentnotary.recorder import SessionRecorder, list_sessions, load_session
 
 
 @pytest.fixture
 def agent_dir(tmp_path):
-    (tmp_path / ".agentbox" / "sessions").mkdir(parents=True)
+    (tmp_path / ".agentnotary" / "sessions").mkdir(parents=True)
     return tmp_path
 
 
@@ -20,7 +20,7 @@ def make_recorder(agent_dir, name="test-agent", version="0.1.0", model="claude-s
 def test_recorder_creates_session_file(agent_dir):
     recorder = make_recorder(agent_dir)
     recorder.complete(status="completed")
-    session_files = list(Path(agent_dir / ".agentbox" / "sessions").glob("*.json"))
+    session_files = list(Path(agent_dir / ".agentnotary" / "sessions").glob("*.json"))
     assert len(session_files) == 1
 
 
@@ -108,7 +108,7 @@ def test_list_sessions_returns_metadata(agent_dir):
 
 
 def test_list_sessions_empty(tmp_path):
-    (tmp_path / ".agentbox" / "sessions").mkdir(parents=True)
+    (tmp_path / ".agentnotary" / "sessions").mkdir(parents=True)
     assert list_sessions(str(tmp_path)) == []
 
 

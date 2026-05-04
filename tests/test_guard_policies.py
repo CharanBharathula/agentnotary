@@ -4,16 +4,16 @@ from pathlib import Path
 
 import pytest
 
-from agentbox.guard import pii
-from agentbox.guard.policies import CallMeta, PolicyEngine
-from agentbox.manifest import parse_manifest
+from agentnotary.guard import pii
+from agentnotary.guard.policies import CallMeta, PolicyEngine
+from agentnotary.manifest import parse_manifest
 
-FIXTURE = Path(__file__).parent / "fixtures" / "agentbox_v02.yaml"
+FIXTURE = Path(__file__).parent / "fixtures" / "agentnotary_v02.yaml"
 
 
 @pytest.fixture
 def manifest(tmp_path):
-    (tmp_path / "agentbox.yaml").write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / "agentnotary.yaml").write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
     return parse_manifest(str(tmp_path))
 
 
@@ -144,7 +144,7 @@ def test_engine_post_flight_accumulates_cost(manifest):
 
 def test_engine_no_guardrail_spec_allows_all(tmp_path):
     """With no typed guardrails, the engine permits everything but still tracks usage."""
-    (tmp_path / "agentbox.yaml").write_text(
+    (tmp_path / "agentnotary.yaml").write_text(
         "agent:\n  name: open-agent\n  version: 0.1.0\n  model: claude-sonnet-4\n  framework: anthropic\n",
         encoding="utf-8",
     )

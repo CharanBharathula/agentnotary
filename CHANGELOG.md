@@ -1,62 +1,90 @@
 # Changelog
 
-All notable changes to AgentBox are documented in this file.
+All notable changes to AgentNotary are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [0.2.0] — 2026-05-03
+## [0.3.0] — 2026-05-04
 
-The differentiation release. Three new commands turn AgentBox from a metadata format into a complete governance loop: **declare → seal → enforce → document**.
+The launch release. Project renamed from `agentbox` to `agentnotary` to reflect the actual product positioning (notary public for AI agents) and to escape a crowded namespace where "agentbox" had become synonymous with sandbox/container projects unrelated to governance.
+
+Four new top-level commands ship in this release.
 
 ### Added
 
-- **`agentbox seal`** — cryptographic reproducibility lockfile (`agent.lock`).
+- **`agentnotary bom`** — AI Software Bill of Materials.
+  - CycloneDX 1.6 (OWASP standard) and SPDX 2.3 (Linux Foundation standard) outputs.
+  - Enumerates models, prompts, tools, MCP servers, datasets, and Python dependencies.
+  - When `agent.lock` is present, components are anchored by cryptographic hashes from the seal.
+  - First mover for AI-BOM in the agent space — pairs with NIST/CISA AI supply-chain guidance.
+- **`agentnotary bench`** — Cross-model Pareto comparison.
+  - Runs the eval suite against multiple models in parallel.
+  - ASCII Pareto chart of cost vs accuracy.
+  - Dry-run mode (no API key) projects cost from prompt size + the static pricing table.
+  - Default lineup: Sonnet 4.5, GPT-4o, GPT-4o-mini, Gemini 2.5 Flash.
+- **`agentnotary attack`** — Adversarial fuzzer.
+  - Bundled OWASP LLM Top 10 attack corpus (11 attacks across LLM01/02/06/07/09).
+  - Dry-run mode predicts blockability based on declared guardrails.
+  - Live mode (with API key) sends attacks to the agent's actual model.
+  - Severity-classified report with per-attack evidence.
+- **`agentnotary replay <id> --rewind`** — Time-travel debugging.
+  - Replay any recorded session step by step.
+  - `--rewind --step N --edit '<prompt>'` forks the trajectory at step N, replaces the prompt, and either calls the live LLM (if API key present) or uses a deterministic stand-in.
+  - Original session cost preserved; rewind only spends on the diverged turn.
+- **48 new tests** (total: 169 from 121).
+
+### Changed
+
+- **Project renamed** `agentbox` → `agentnotary`.
+  - PyPI: `pip install agentnotary`
+  - CLI: `agentnotary` (replaces `agentbox`)
+  - Manifest filename: `agentnotary.yaml` (legacy `agentbox.yaml` still parses with a deprecation warning)
+  - State directory: `.agentnotary/` (legacy `.agentbox/` still works)
+  - apiVersion: `agentnotary/v0.2` (legacy `agentbox/v0.2` still accepted)
+  - Env vars: `AGENTNOTARY_*` (replaces `AGENTBOX_*`)
+- **CLI banner** reorganized: `Notarize & Govern` / `Audit & Test (v0.3)` / `Develop` / `Versioning & Observability`.
+- **Tagline** updated: *"Notarize, govern, and audit AI agents."*
+- **Classifiers** in `pyproject.toml` now include `Topic :: Security` and `Intended Audience :: Legal Industry`.
+
+### Backwards compatibility
+
+- Existing `agentbox.yaml` manifests are read transparently with a one-line stderr deprecation warning.
+- `apiVersion: agentbox/v0.2` is still recognized as a v0.2 manifest.
+- Existing `.agentbox/` session and version directories continue to be respected when `.agentnotary/` is absent.
+- Migration: rename `agentbox.yaml` → `agentnotary.yaml`, optionally update apiVersion. No code changes required for typical agents.
+
+## [0.2.0] — 2026-05-03 (released as `agentbox`)
+
+Three new commands turn AgentNotary from a metadata format into a complete governance loop.
+
+### Added
+
+- **`agentnotary seal`** — cryptographic reproducibility lockfile (`agent.lock`).
   - Hashes manifest, prompts (raw + normalized), tool source code, datasets, and dependencies.
-  - Optional `--probe` flag sends a canonical prompt at temperature 0 and hashes the response — detects silent provider weight updates.
-  - `agentbox seal --verify` exits non-zero on any drift, with a human-readable diff.
-  - `agentbox seal diff <other.lock>` compares two seals.
+  - Optional `--probe` flag sends a canonical prompt at temperature 0 and hashes the response.
+  - `agentnotary seal --verify` exits non-zero on any drift, with a human-readable diff.
   - Honest "non_deterministic" caveats list every source of drift the seal cannot prevent.
-- **`agentbox guard run -- <command>`** — runtime enforcement proxy.
+- **`agentnotary guard run -- <command>`** — runtime enforcement proxy.
   - Local HTTP reverse proxy that wraps the agent's LLM provider calls.
   - Framework-agnostic: works with anything that respects `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL`.
   - Enforces typed guardrails: cost cap (per-call + per-session), iteration cap, tool allowlist/denylist, PII redaction, content size, rate limit.
   - Returns provider-shaped 403 errors so the agent's SDK raises naturally.
-  - Optional Presidio NER PII detection via `pip install agentbox[pii]`.
-- **`agentbox compliance --standard eu-ai-act`** — auto-generated regulatory documentation.
+- **`agentnotary compliance --standard eu-ai-act`** — auto-generated regulatory documentation.
   - Combines manifest + seal + session history into EU AI Act Annex IV technical documentation.
-  - Deterministic risk classifier with cited rules (Article 5 prohibited / Annex III high-risk / Article 52 transparency / minimal).
-  - Markdown output for engineers (committable, diffable in PRs); JSON output for GRC tools (OneTrust, ServiceNow GRC, Drata).
-  - `--check` mode for CI: exits non-zero if compliance metadata is missing.
-  - Prominent "scaffold only — not legal advice" disclaimer in every generated document.
-- **Manifest schema v0.2** (`apiVersion: agentbox/v0.2`).
-  - Typed `model:` block (provider, name, pinned_version, temperature, max_tokens).
-  - Typed `guardrails:` block (cost, iterations, tools, pii, content, rate) — enforceable, not just metadata.
-  - `entry_point:` block — wrapped by `agentbox guard run`.
-  - `compliance:` block — risk_class, data_handling, human_oversight, affected_users, intended_purpose, out_of_scope.
-  - `compile`, `simulate`, `drift` namespaces reserved for v0.3.
-- **`agentbox/pricing.py`** — static USD/1M-token pricing table for the top ~20 models across Anthropic, OpenAI, Google, and local providers.
-- 58 new tests (total: 121 from 63), covering seal fingerprinting, lockfile diffing, policy engine, PII detector, risk classifier, compliance generation, and the v0.2 manifest schema.
-- Open-source readiness: `LICENSE` (Apache-2.0), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`, GitHub issue and PR templates.
-
-### Changed
-
-- **CLI usage banner** reorganized into Govern / Develop / Versioning / Observe sections.
-- **`agentbox info` and `agentbox validate`** now correctly count typed v0.2 guardrails (e.g. `5 typed (cost, iterations, tools, pii, rate)`) instead of reporting 0.
-- **`generate_default_manifest`** now produces a v0.2 manifest with typed guardrails, compliance metadata, and an entry point.
-- **`pyproject.toml`** adds `aiohttp` and `jinja2` to base dependencies; new `[pii]` and `[pdf]` extras.
-- Tagline shifted from "Docker for AI Agents" to **"The declarative governance spec for AI agents"** to better reflect the Terraform-style positioning.
+  - Deterministic risk classifier with cited rules.
+  - Markdown + JSON output formats.
+  - `--check` mode for CI.
+- **Manifest schema v0.2** with typed `model`, `guardrails`, `entry_point`, and `compliance` blocks.
+- **`pricing.py`** — static USD/1M-token table for top ~20 models.
+- 58 new tests (total: 121).
+- Apache-2.0 LICENSE, CONTRIBUTING.md, CODE_OF_CONDUCT.md, GitHub issue and PR templates.
 
 ### Fixed
 
-- `datetime.utcnow()` deprecation warnings replaced with timezone-aware `datetime.now(timezone.utc)`.
-- Windows console UTF-8 encoding issue with the hexagonal logo character (`⬡`) — `cli.py` now reconfigures stdout to UTF-8 on Windows.
-- v0.1 manifests with free-form list-style guardrails continue to parse cleanly under v0.2 (one-line stderr deprecation note instead of an error).
+- `datetime.utcnow()` deprecation warnings cleared.
+- Windows console UTF-8 encoding for the hexagonal logo character.
 
-### Backwards compatibility
-
-All v0.1 manifests parse without modification under v0.2. New typed features activate only when `apiVersion: agentbox/v0.2` is set at the top of the manifest. The legacy `Guardrail` / flat-model fields remain on `AgentManifest` and are populated for both forms.
-
-## [0.1.0] — 2026-05-03
+## [0.1.0] — 2026-05-03 (released as `agentbox`)
 
 Initial public release. Manifest format, evals, sessions, version tagging, codebase scanner.

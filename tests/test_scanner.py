@@ -3,7 +3,7 @@
 
 import pytest
 
-from agentbox.scanner import format_scan_results, scan_directory, scan_file
+from agentnotary.scanner import format_scan_results, scan_directory, scan_file
 
 LANGCHAIN_SAMPLE = """\
 from langchain.agents import AgentExecutor, create_react_agent

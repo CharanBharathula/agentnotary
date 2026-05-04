@@ -3,16 +3,24 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "agentbox"
-version = "0.2.0"
-description = "The declarative governance spec for AI agents — seal, guard, and audit-ready compliance"
+name = "agentnotary"
+version = "0.3.0"
+description = "Notarize, govern, and audit AI agents — cryptographic seal, runtime guard, and EU AI Act compliance docs"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.9"
-keywords = ["ai", "agents", "llm", "governance", "compliance", "eu-ai-act", "reproducibility", "lockfile", "guardrails", "langchain", "crewai", "autogen"]
+keywords = [
+    "ai", "agents", "llm",
+    "governance", "compliance", "eu-ai-act",
+    "reproducibility", "lockfile", "sbom", "cyclonedx", "spdx",
+    "guardrails", "ai-safety", "prompt-injection",
+    "langchain", "crewai", "autogen", "anthropic", "openai", "mcp",
+]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Legal Industry",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
@@ -21,6 +29,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Security",
 ]
 
 dependencies = [
@@ -43,17 +52,18 @@ dev = [
 ]
 
 [project.scripts]
-agentbox = "agentbox.cli:main"
+agentnotary = "agentnotary.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/CharanBharathula/agentbox"
-Documentation = "https://CharanBharathula.github.io/agentbox"
-Repository = "https://github.com/CharanBharathula/agentbox"
-"Bug Tracker" = "https://github.com/CharanBharathula/agentbox/issues"
+Homepage = "https://github.com/CharanBharathula/agentnotary"
+Documentation = "https://CharanBharathula.github.io/agentnotary"
+Repository = "https://github.com/CharanBharathula/agentnotary"
+"Bug Tracker" = "https://github.com/CharanBharathula/agentnotary/issues"
+Changelog = "https://github.com/CharanBharathula/agentnotary/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["agentbox*"]
+include = ["agentnotary*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -68,7 +78,7 @@ select = ["E", "F", "I"]
 ignore = ["E501"]
 
 [tool.coverage.run]
-source = ["agentbox"]
+source = ["agentnotary"]
 omit = ["tests/*"]
 
 [tool.coverage.report]

@@ -5,19 +5,19 @@ from pathlib import Path
 
 import pytest
 
-from agentbox.compliance import check, classify_risk, generate
-from agentbox.compliance.classifier import HIGH_RISK_KEYWORDS
-from agentbox.manifest import parse_manifest
+from agentnotary.compliance import check, classify_risk, generate
+from agentnotary.compliance.classifier import HIGH_RISK_KEYWORDS
+from agentnotary.manifest import parse_manifest
 
-FIXTURE = Path(__file__).parent / "fixtures" / "agentbox_v02.yaml"
+FIXTURE = Path(__file__).parent / "fixtures" / "agentnotary_v02.yaml"
 
 
 @pytest.fixture
 def agent_dir(tmp_path):
-    (tmp_path / "agentbox.yaml").write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / "agentnotary.yaml").write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
     (tmp_path / "evals").mkdir()
     (tmp_path / "evals" / "test_suite.yaml").write_text("evals: []\n", encoding="utf-8")
-    (tmp_path / ".agentbox" / "sessions").mkdir(parents=True)
+    (tmp_path / ".agentnotary" / "sessions").mkdir(parents=True)
     return tmp_path
 
 
@@ -34,7 +34,7 @@ def test_classifier_detects_external_consumers(agent_dir):
 
 def test_classifier_high_risk_for_payment_tools(tmp_path):
     yaml_text = """
-apiVersion: agentbox/v0.2
+apiVersion: agentnotary/v0.2
 agent:
   name: pay-agent
   version: 1.0.0
@@ -51,7 +51,7 @@ agent:
     affected_users: external_consumers
     intended_purpose: "Charges customer credit cards for purchases"
 """
-    (tmp_path / "agentbox.yaml").write_text(yaml_text, encoding="utf-8")
+    (tmp_path / "agentnotary.yaml").write_text(yaml_text, encoding="utf-8")
     m = parse_manifest(str(tmp_path))
     risk = classify_risk(m)
     assert risk.risk_class == "high"
@@ -60,7 +60,7 @@ agent:
 
 def test_classifier_minimal_for_internal_only(tmp_path):
     yaml_text = """
-apiVersion: agentbox/v0.2
+apiVersion: agentnotary/v0.2
 agent:
   name: internal-bot
   version: 1.0.0
@@ -71,7 +71,7 @@ agent:
     affected_users: internal
     intended_purpose: "Internal log summarization"
 """
-    (tmp_path / "agentbox.yaml").write_text(yaml_text, encoding="utf-8")
+    (tmp_path / "agentnotary.yaml").write_text(yaml_text, encoding="utf-8")
     m = parse_manifest(str(tmp_path))
     risk = classify_risk(m)
     assert risk.risk_class == "minimal"
@@ -79,7 +79,7 @@ agent:
 
 def test_classifier_high_risk_for_minors(tmp_path):
     yaml_text = """
-apiVersion: agentbox/v0.2
+apiVersion: agentnotary/v0.2
 agent:
   name: tutor-bot
   version: 1.0.0
@@ -90,7 +90,7 @@ agent:
     affected_users: minors
     intended_purpose: "Tutoring assistant for K-12 students"
 """
-    (tmp_path / "agentbox.yaml").write_text(yaml_text, encoding="utf-8")
+    (tmp_path / "agentnotary.yaml").write_text(yaml_text, encoding="utf-8")
     m = parse_manifest(str(tmp_path))
     risk = classify_risk(m)
     assert risk.risk_class == "high"
@@ -125,7 +125,7 @@ def test_check_passes_on_complete_manifest(agent_dir):
 
 def test_check_flags_missing_intended_purpose(tmp_path):
     yaml_text = """
-apiVersion: agentbox/v0.2
+apiVersion: agentnotary/v0.2
 agent:
   name: nopurpose
   version: 1.0.0
@@ -136,7 +136,7 @@ agent:
     risk_class: minimal
     affected_users: internal
 """
-    (tmp_path / "agentbox.yaml").write_text(yaml_text, encoding="utf-8")
+    (tmp_path / "agentnotary.yaml").write_text(yaml_text, encoding="utf-8")
     m = parse_manifest(str(tmp_path))
     issues = check(m)
     assert any(i.severity == "error" and "intended_purpose" in i.field for i in issues)
@@ -150,7 +150,7 @@ agent:
   model: claude-sonnet-4
   framework: anthropic
 """
-    (tmp_path / "agentbox.yaml").write_text(yaml_text, encoding="utf-8")
+    (tmp_path / "agentnotary.yaml").write_text(yaml_text, encoding="utf-8")
     m = parse_manifest(str(tmp_path))
     issues = check(m)
     assert any(i.severity == "error" for i in issues)

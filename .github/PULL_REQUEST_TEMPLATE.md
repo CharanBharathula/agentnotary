@@ -13,7 +13,7 @@
 ## Checklist
 
 - [ ] Tests pass: `pytest tests/ -q`
-- [ ] Lint clean: `ruff check agentbox/ tests/`
+- [ ] Lint clean: `ruff check agentnotary/ tests/`
 - [ ] New behavior has a test
 - [ ] User-visible changes added to `CHANGELOG.md` under `## [Unreleased]`
 - [ ] If a manifest field changed, it's reflected in `generate_default_manifest` and the README
@@ -21,4 +21,4 @@
 
 ## Out-of-scope confirmation
 
-I have read `CONTRIBUTING.md` and confirm this PR strengthens the AgentBox thesis (declare → seal → enforce → document). It is **not** an observability/dashboarding feature, framework integration, or SaaS dependency.
+I have read `CONTRIBUTING.md` and confirm this PR strengthens the AgentNotary thesis (declare → seal → enforce → document). It is **not** an observability/dashboarding feature, framework integration, or SaaS dependency.

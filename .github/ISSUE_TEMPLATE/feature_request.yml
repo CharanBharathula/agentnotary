@@ -1,11 +1,11 @@
 name: Feature request
-description: Propose a new capability for AgentBox
+description: Propose a new capability for AgentNotary
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Before opening, please confirm the request fits the AgentBox thesis (see `CONTRIBUTING.md`):
+        Before opening, please confirm the request fits the AgentNotary thesis (see `CONTRIBUTING.md`):
         the project owns **declare → seal → enforce → document** for AI agents and is intentionally narrow.
 
   - type: textarea
@@ -20,7 +20,7 @@ body:
     id: proposal
     attributes:
       label: Proposed approach
-      description: How would AgentBox solve this? CLI surface, manifest fields, output format, etc.
+      description: How would AgentNotary solve this? CLI surface, manifest fields, output format, etc.
     validations:
       required: true
 

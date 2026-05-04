@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from agentbox.versioner import (
+from agentnotary.versioner import (
     compute_agent_hash,
     list_versions,
     rollback_to,
@@ -22,26 +22,26 @@ agent:
 
 @pytest.fixture
 def agent_project(tmp_path):
-    (tmp_path / "agentbox.yaml").write_text(MANIFEST)
+    (tmp_path / "agentnotary.yaml").write_text(MANIFEST)
     (tmp_path / "prompts").mkdir()
     (tmp_path / "prompts" / "system.txt").write_text("You are a helpful assistant.")
     (tmp_path / "evals").mkdir()
     (tmp_path / "evals" / "test_suite.yaml").write_text("suite: test\ncases: []")
-    (tmp_path / ".agentbox" / "versions").mkdir(parents=True)
+    (tmp_path / ".agentnotary" / "versions").mkdir(parents=True)
     return tmp_path
 
 
 def test_compute_agent_hash_is_deterministic(agent_project):
-    h1 = compute_agent_hash(str(agent_project / "agentbox.yaml"))
-    h2 = compute_agent_hash(str(agent_project / "agentbox.yaml"))
+    h1 = compute_agent_hash(str(agent_project / "agentnotary.yaml"))
+    h2 = compute_agent_hash(str(agent_project / "agentnotary.yaml"))
     assert h1 == h2
     assert len(h1) == 12
 
 
 def test_compute_agent_hash_changes_on_content_change(agent_project):
-    h1 = compute_agent_hash(str(agent_project / "agentbox.yaml"))
-    (agent_project / "agentbox.yaml").write_text(MANIFEST + "\ndescription: changed")
-    h2 = compute_agent_hash(str(agent_project / "agentbox.yaml"))
+    h1 = compute_agent_hash(str(agent_project / "agentnotary.yaml"))
+    (agent_project / "agentnotary.yaml").write_text(MANIFEST + "\ndescription: changed")
+    h2 = compute_agent_hash(str(agent_project / "agentnotary.yaml"))
     assert h1 != h2
 
 
@@ -52,20 +52,20 @@ def test_compute_agent_hash_missing_file(tmp_path):
 
 def test_tag_version_creates_directory(agent_project):
     tag_version("v0.1.0", str(agent_project))
-    version_dir = agent_project / ".agentbox" / "versions" / "v0.1.0"
+    version_dir = agent_project / ".agentnotary" / "versions" / "v0.1.0"
     assert version_dir.exists()
 
 
 def test_tag_version_copies_manifest(agent_project):
     tag_version("v0.1.0", str(agent_project))
-    saved = agent_project / ".agentbox" / "versions" / "v0.1.0" / "agentbox.yaml"
+    saved = agent_project / ".agentnotary" / "versions" / "v0.1.0" / "agentnotary.yaml"
     assert saved.exists()
     assert "test-agent" in saved.read_text()
 
 
 def test_tag_version_copies_prompts(agent_project):
     tag_version("v0.1.0", str(agent_project))
-    saved = agent_project / ".agentbox" / "versions" / "v0.1.0" / "prompts" / "system.txt"
+    saved = agent_project / ".agentnotary" / "versions" / "v0.1.0" / "prompts" / "system.txt"
     assert saved.exists()
 
 
@@ -75,7 +75,7 @@ def test_tag_version_writes_version_json(agent_project):
     assert "tagged_at" in meta
     assert "manifest_hash" in meta
 
-    version_json = agent_project / ".agentbox" / "versions" / "v0.1.0" / "VERSION.json"
+    version_json = agent_project / ".agentnotary" / "versions" / "v0.1.0" / "VERSION.json"
     with open(version_json) as f:
         saved_meta = json.load(f)
     assert saved_meta["version"] == "v0.1.0"
@@ -88,7 +88,7 @@ def test_tag_version_duplicate_raises(agent_project):
 
 
 def test_list_versions_empty(tmp_path):
-    (tmp_path / ".agentbox" / "versions").mkdir(parents=True)
+    (tmp_path / ".agentnotary" / "versions").mkdir(parents=True)
     assert list_versions(str(tmp_path)) == []
 
 
@@ -104,15 +104,15 @@ def test_list_versions_returns_tagged(agent_project):
 
 def test_rollback_to_restores_manifest(agent_project):
     tag_version("v0.1.0", str(agent_project))
-    (agent_project / "agentbox.yaml").write_text(MANIFEST + "\ndescription: new version")
+    (agent_project / "agentnotary.yaml").write_text(MANIFEST + "\ndescription: new version")
     rollback_to("v0.1.0", str(agent_project))
-    content = (agent_project / "agentbox.yaml").read_text()
+    content = (agent_project / "agentnotary.yaml").read_text()
     assert "description: new version" not in content
 
 
 def test_rollback_to_auto_saves_current(agent_project):
     tag_version("v0.1.0", str(agent_project))
-    (agent_project / "agentbox.yaml").write_text(MANIFEST + "\ndescription: current")
+    (agent_project / "agentnotary.yaml").write_text(MANIFEST + "\ndescription: current")
     rollback_to("v0.1.0", str(agent_project))
     # Should have auto-saved current state as pre-rollback-*
     versions = list_versions(str(agent_project))

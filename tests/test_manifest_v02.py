@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from agentbox.manifest import (
+from agentnotary.manifest import (
     API_VERSION_V02,
     ComplianceMeta,
     GuardrailSpec,
@@ -12,12 +12,12 @@ from agentbox.manifest import (
     parse_manifest,
 )
 
-FIXTURE = Path(__file__).parent / "fixtures" / "agentbox_v02.yaml"
+FIXTURE = Path(__file__).parent / "fixtures" / "agentnotary_v02.yaml"
 
 
 @pytest.fixture
 def v02_dir(tmp_path):
-    (tmp_path / "agentbox.yaml").write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / "agentnotary.yaml").write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
     return tmp_path
 
 
@@ -89,7 +89,7 @@ def test_tools_have_typed_fields(v02_dir):
 
 def test_v01_manifest_still_parses(tmp_path):
     """Backwards compatibility: existing v0.1 form continues to work."""
-    (tmp_path / "agentbox.yaml").write_text(
+    (tmp_path / "agentnotary.yaml").write_text(
         "agent:\n"
         "  name: legacy-agent\n"
         "  version: 0.1.0\n"
