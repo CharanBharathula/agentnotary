@@ -50,3 +50,9 @@ nosetests.xml
 # Distribution
 dist/
 build/
+
+# Generated demo assets (regenerate with `python scripts/make_demo_gif.py`)
+demo-output/
+agentnotary-demo.gif
+agentnotary-demo.mp4
+

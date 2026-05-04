@@ -6,6 +6,8 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![AgentNotary Score](https://img.shields.io/badge/agentnotary-self_hosted-brightgreen)](https://github.com/CharanBharathula/agentnotary)
 
+![AgentNotary demo](https://github.com/CharanBharathula/agentnotary/releases/download/v0.4.0/agentnotary-demo.gif)
+
 > **Your agent runs. Can you prove it's the same one you tested?**
 
 **The notary stamp your agent needs before it ships.** One open-source CLI, framework-agnostic, 202 tests, no SaaS. Seal it, score it, attack it, guard it, prove it.
