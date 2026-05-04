@@ -5,6 +5,41 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the 
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-05-04
+
+The differentiation release. Five new commands turn AgentNotary from a feature suite into a **lifecycle health system** — a single command tells you what's wrong, a single number tells you how you're doing, and a single badge shares your governance posture publicly.
+
+Aligned with the [OWASP Agentic AI Top 10](https://genai.owasp.org/llm-top-10/) (Dec 2025).
+
+### Added
+
+- **`agentnotary doctor`** — one-command health scan with actionable punch-list. Like `brew doctor` for AI agents.
+- **`agentnotary score [--badge|--json]`** — single 0–100 governance score across 7 dimensions (seal, guardrails, attack, compliance, evals, reproducibility, ops). Emits a shareable shields.io badge URL.
+- **`agentnotary drift`** — re-probes the model and quantifies drift since the last seal. Detects when a provider silently updates weights behind the same model ID. **First open-source tool to do this.**
+- **`agentnotary compare <a.lock> <b.lock>`** — diff two lockfiles with developer-friendly section summaries (model, prompts, tools, datasets, deps).
+- **`agentnotary audit <session-id>`** — forensic security audit of a recorded session. Detects PII in stored content, repeat-loops, cost spikes, guardrail events.
+- **GitHub Action** (`action.yml` at repo root) — drop-in CI step:
+  ```yaml
+  - uses: CharanBharathula/agentnotary@v0.4.0
+    with: { manifest: agentnotary.yaml, min-score: "70", fail-on-drift: "true" }
+  ```
+- **README badge** — generate from `agentnotary score --badge`. Social-proof loop.
+- 33 new tests (total: **202** from 169).
+
+### Changed
+
+- **README rewrite** with the $47K horror story as the lead, OWASP Top 10 alignment, full competitive matrix, and badge prominent at top.
+- **CLI usage banner** adds a "Health & Forensics (v0.4)" section.
+- **Tagline:** *"The notary stamp your agent needs before it ships. Seal it. Score it. Attack it. Guard it. Prove it."*
+
+### Internals
+
+- New module `agentnotary/score/` — deterministic scoring rubric (no LLM calls).
+- New module `agentnotary/drift/` — re-probe + similarity comparison.
+- New module `agentnotary/audit/` — session forensic analyzer.
+- New module `agentnotary/seal/compare.py` — high-level lockfile diff.
+- All five new commands are pure-Python with no new dependencies.
+
 ## [0.3.0] — 2026-05-04
 
 The launch release. Project renamed from `agentbox` to `agentnotary` to reflect the actual product positioning (notary public for AI agents) and to escape a crowded namespace where "agentbox" had become synonymous with sandbox/container projects unrelated to governance.

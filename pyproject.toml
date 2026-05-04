@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentnotary"
-version = "0.3.0"
+version = "0.4.0"
 description = "Notarize, govern, and audit AI agents — cryptographic seal, runtime guard, and EU AI Act compliance docs"
 readme = "README.md"
 license = { text = "Apache-2.0" }

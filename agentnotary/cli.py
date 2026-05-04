@@ -866,6 +866,282 @@ def cmd_replay(args):
     return 0
 
 
+# ── v0.4 commands: score, doctor, drift, compare, audit ──────────────────────
+
+
+def cmd_score(args):
+    """Compute the agent's governance score (0-100) + emit a badge URL."""
+    from agentnotary.score import score
+    from agentnotary.score.scorer import badge_markdown, badge_url
+
+    output_format = "human"
+    i = 0
+    while i < len(args):
+        if args[i] == "--json":
+            output_format = "json"
+            i += 1
+        elif args[i] == "--badge":
+            output_format = "badge"
+            i += 1
+        else:
+            print_error(f"Unknown flag: {args[i]}")
+            return 1
+
+    try:
+        report = score(".")
+    except Exception as e:  # noqa: BLE001
+        print_error(f"Could not score: {e}")
+        return 1
+
+    if output_format == "json":
+        import json
+        from dataclasses import asdict
+        print(json.dumps({
+            "score": report.score,
+            "grade": report.grade,
+            "summary": report.summary,
+            "items": [asdict(i) for i in report.items],
+            "badge_url": badge_url(report.score),
+        }, indent=2))
+        return 0
+
+    if output_format == "badge":
+        print(badge_url(report.score))
+        return 0
+
+    print_header(f"Governance score: {BOLD}{report.score}/100{RESET} (grade {report.grade})")
+    print_info(report.summary)
+    print()
+
+    # By dimension
+    dims = ["seal", "guardrails", "attack", "compliance", "evals", "reproducibility", "ops"]
+    for dim in dims:
+        section = report.by_dimension(dim)
+        if not section:
+            continue
+        earned = sum(s.points_earned for s in section)
+        possible = sum(s.points_possible for s in section)
+        color = GREEN if earned == possible else (YELLOW if earned > 0 else RED)
+        print(f"  {color}{BOLD}{dim:<16}{RESET} {earned:>3}/{possible:<3}")
+        for s in section:
+            icon = {"pass": f"{GREEN}✓{RESET}",
+                    "warn": f"{YELLOW}!{RESET}",
+                    "fail": f"{RED}✗{RESET}",
+                    "info": f"{DIM}·{RESET}"}.get(s.severity, " ")
+            print(f"      {icon} {s.label} ({s.points_earned}/{s.points_possible})")
+            if s.fix_hint:
+                print(f"         {DIM}→ {s.fix_hint}{RESET}")
+    print()
+    print_info(f"Badge: {badge_url(report.score)}")
+    print_info(f"Markdown: {DIM}{badge_markdown(report.score)}{RESET}")
+    print()
+    return 0
+
+
+def cmd_doctor(args):
+    """One-command health scan with actionable punch-list."""
+    from agentnotary.score import score
+
+    try:
+        report = score(".")
+    except Exception as e:  # noqa: BLE001
+        print_error(f"Could not run doctor: {e}")
+        return 1
+
+    print_header(f"Doctor: {BOLD}{report.score}/100{RESET} (grade {report.grade})")
+    print_info(report.summary)
+    print()
+
+    # Show only items needing action (warns + fails) for the punch-list
+    actionable = [i for i in report.items if i.severity in ("warn", "fail")]
+
+    if not actionable:
+        print_success("No issues found. Your agent is in great shape.")
+        print()
+        return 0
+
+    print(f"  {BOLD}Actionable items ({len(actionable)}):{RESET}")
+    print()
+    for idx, item in enumerate(actionable, 1):
+        icon = f"{RED}FAIL{RESET}" if item.severity == "fail" else f"{YELLOW}WARN{RESET}"
+        print(f"  {icon}  {idx}. {item.label}")
+        if item.fix_hint:
+            print(f"          {DIM}→ {item.fix_hint}{RESET}")
+        print()
+
+    fails = sum(1 for i in actionable if i.severity == "fail")
+    if fails:
+        print_error(f"{fails} failure(s). Fix these before shipping.")
+    else:
+        print_warn(f"{len(actionable)} warning(s). Strongly recommended fixes.")
+    print()
+    return 1 if fails else 0
+
+
+def cmd_drift(args):
+    """Re-probe the model and quantify drift since the last seal."""
+    from agentnotary.drift import measure_drift
+
+    try:
+        report = measure_drift(".")
+    except FileNotFoundError as e:
+        print_error(str(e))
+        return 1
+
+    print_header(f"Drift check: {report.agent_name} v{report.agent_version}")
+    print_info(f"Sealed at:    {report.sealed_at}")
+    print_info(f"Measured at:  {report.measured_at}")
+    print_info(f"Model:        {report.provider}/{report.model}"
+                + (f" @ {report.pinned_version}" if report.pinned_version else ""))
+    print()
+
+    if not report.probes:
+        print_warn("No probes evaluated.")
+        for n in report.notes:
+            print_dim(f"  {n}")
+        return 1
+
+    # Summary line
+    measured = report.measured_count
+    diverged = report.diverged_count
+    if measured == 0:
+        print_warn("Drift could not be measured.")
+    else:
+        pct = int(report.drift_score * 100)
+        if pct == 0:
+            print_success(f"No drift detected ({diverged}/{measured} probe(s) diverged)")
+        elif pct < 50:
+            print_warn(f"Mild drift: {pct}% ({diverged}/{measured} probe(s) diverged)")
+        else:
+            print_error(f"Significant drift: {pct}% ({diverged}/{measured} probe(s) diverged)")
+
+    print()
+    for p in report.probes:
+        if p.skipped_reason:
+            print(f"  [{p.probe_index}] {DIM}skipped: {p.skipped_reason}{RESET}")
+            continue
+        match_icon = f"{GREEN}MATCH{RESET}" if p.exact_match else f"{RED}DRIFT{RESET}"
+        print(f"  [{p.probe_index}] {match_icon}  similarity={p.similarity_score:.2f}")
+        print(f"      {DIM}prompt:    {p.prompt[:60]}{RESET}")
+        if p.sealed_response_hash:
+            print(f"      {DIM}sealed:    {p.sealed_response_hash[:24]}...{RESET}")
+        if p.current_response_hash:
+            print(f"      {DIM}current:   {p.current_response_hash[:24]}...{RESET}")
+        if p.current_response_preview and not p.exact_match:
+            print(f"      {DIM}response:  {p.current_response_preview[:100]}{RESET}")
+
+    if report.notes:
+        print()
+        for n in report.notes:
+            print_dim(f"  {n}")
+    print()
+
+    return 1 if report.drift_score > 0 else 0
+
+
+def cmd_compare(args):
+    """Diff two agent.lock files."""
+    from agentnotary.seal.compare import compare_locks
+
+    if len(args) < 2:
+        print_error("Usage: agentnotary compare <lockfile-a> <lockfile-b>")
+        print_info("Each argument may be either an agent.lock file or a directory containing one.")
+        return 1
+
+    try:
+        report = compare_locks(args[0], args[1])
+    except (FileNotFoundError, ValueError) as e:
+        print_error(str(e))
+        return 1
+
+    print_header(f"Compare: {report.a_name}  ↔  {report.b_name}")
+    print_info(f"A: {report.a_path}")
+    print_info(f"B: {report.b_path}")
+    if report.total_changes == 0:
+        print_success("Lockfiles are identical.")
+        print()
+        return 0
+    print_warn(f"{report.total_changes} change(s) detected")
+    print()
+
+    for section in report.sections:
+        state_color = {
+            "same": DIM, "changed": YELLOW, "added": GREEN, "removed": RED, "mixed": YELLOW,
+        }.get(section.state, RESET)
+        print(f"  {BOLD}{section.name:<14}{RESET} {state_color}{section.state:<8}{RESET} {section.summary}")
+        for d in section.details[:8]:
+            print(f"      {DIM}{d}{RESET}")
+        if len(section.details) > 8:
+            print_dim(f"      ... and {len(section.details) - 8} more")
+    print()
+    return 1
+
+
+def cmd_audit(args):
+    """Forensic audit of a recorded session."""
+    from agentnotary.audit import audit_session
+
+    if not args:
+        print_error("Usage: agentnotary audit <session-id> [--json]")
+        return 1
+
+    session_id = args[0]
+    output_format = "human"
+    if "--json" in args[1:]:
+        output_format = "json"
+
+    try:
+        report = audit_session(session_id, ".")
+    except FileNotFoundError as e:
+        print_error(str(e))
+        return 1
+
+    if output_format == "json":
+        import json
+        from dataclasses import asdict
+        print(json.dumps(asdict(report), indent=2, default=str))
+        return 0
+
+    print_header(f"Audit: session {report.session_id}")
+    print_info(f"Agent:    {report.agent_name} v{report.agent_version}")
+    print_info(f"Model:    {report.model}")
+    print_info(f"Status:   {report.status}")
+    print_info(f"Duration: {report.duration_seconds:.1f}s")
+    print_info(f"Cost:     ${report.total_cost_usd:.4f}")
+    print_info(f"Tokens:   {report.total_tokens}")
+    print()
+    print(f"  {BOLD}Activity:{RESET}")
+    print(f"    Total actions:      {report.action_count}")
+    print(f"    LLM calls:          {report.llm_call_count}")
+    print(f"    Tool calls:         {report.tool_call_count}")
+    print(f"    Guardrail events:   {report.guardrail_event_count}")
+    print(f"    Errors:             {report.error_count}")
+    print()
+
+    if report.tools_called:
+        print(f"  {BOLD}Tools used:{RESET}")
+        for name, count in sorted(report.tools_called.items(), key=lambda x: -x[1]):
+            cost = report.tool_costs.get(name, 0.0)
+            print(f"    {name:<30} {count} call(s)  (${cost:.4f})")
+        print()
+
+    if report.findings:
+        print(f"  {BOLD}Findings ({len(report.findings)}):{RESET}")
+        for f in report.findings:
+            color = {"critical": RED, "high": RED, "warn": YELLOW, "info": BLUE}.get(f.severity, RESET)
+            print(f"    {color}[{f.severity.upper():<8}]{RESET} {f.title}")
+            print(f"          {DIM}{f.detail}{RESET}")
+            if f.step_indices:
+                print(f"          {DIM}steps: {', '.join(map(str, f.step_indices[:10]))}"
+                       + (f" (+{len(f.step_indices)-10} more)" if len(f.step_indices) > 10 else "")
+                       + f"{RESET}")
+        print()
+    else:
+        print_success("No notable findings.")
+        print()
+    return 0
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 COMMANDS = {
@@ -887,6 +1163,12 @@ COMMANDS = {
     "bom": cmd_bom,
     "bench": cmd_bench,
     "attack": cmd_attack,
+    # v0.4 — health, drift, forensics
+    "doctor": cmd_doctor,
+    "score": cmd_score,
+    "drift": cmd_drift,
+    "compare": cmd_compare,
+    "audit": cmd_audit,
 }
 
 
@@ -903,6 +1185,13 @@ def print_usage():
   {GREEN}seal --verify{RESET}            Verify nothing has drifted since the last seal
   {GREEN}guard run -- <cmd>{RESET}       Run an agent under runtime enforcement
   {GREEN}compliance{RESET} [--check]     Generate EU AI Act / regulatory docs
+
+{BOLD}Health & Forensics (v0.4):{RESET}
+  {GREEN}doctor{RESET}                   One-command health scan with fix punch-list
+  {GREEN}score{RESET} [--badge|--json]   Governance score (0-100) + README badge URL
+  {GREEN}drift{RESET}                    Re-probe model + quantify drift since last seal
+  {GREEN}compare{RESET} <a.lock> <b.lock> Diff two agent.lock files
+  {GREEN}audit{RESET} <session-id>       Forensic audit of a recorded session
 
 {BOLD}Audit & Test (v0.3):{RESET}
   {GREEN}bom{RESET} [--format ...]       AI Software Bill of Materials (CycloneDX/SPDX)

@@ -1,0 +1,50 @@
+name: AgentNotary self-check
+
+# Demo of the reusable action against this repo. Also smoke-tests the action
+# itself on every push so we catch breakage before publishing.
+#
+# To use this action in your own repo:
+#   - uses: CharanBharathula/agentnotary@v0.4.0
+#     with:
+#       manifest: agentnotary.yaml      # optional, default
+#       min-score: "70"                  # fail PR if score < 70
+#       fail-on-drift: "true"
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "action.yml"
+      - "agentnotary/**"
+      - ".github/workflows/agentnotary-self-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  self-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install local agentnotary
+        run: pip install -e ".[dev]"
+      - name: Generate a sample manifest for self-check
+        run: |
+          mkdir -p .self-check && cd .self-check
+          agentnotary init self-check >/dev/null
+      - name: Run governance commands
+        working-directory: .self-check
+        run: |
+          agentnotary validate
+          agentnotary seal
+          agentnotary seal --verify
+          agentnotary score
+          agentnotary doctor || true            # warns expected on a fresh init
+          agentnotary attack --dry-run || true
+          agentnotary compliance --check || true
+          agentnotary bom --format cyclonedx
+          agentnotary bom --format spdx

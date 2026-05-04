@@ -1,0 +1,164 @@
+name: AgentNotary CI
+description: >
+  Run AgentNotary governance checks on every PR — verify the seal, dry-run the
+  OWASP attack suite, check compliance metadata, and post a governance score
+  comment to the PR.
+
+author: CharanBharathula
+branding:
+  icon: shield
+  color: purple
+
+inputs:
+  manifest:
+    description: Path to agentnotary.yaml (relative to repo root)
+    required: false
+    default: agentnotary.yaml
+  python-version:
+    description: Python version to run AgentNotary against
+    required: false
+    default: "3.12"
+  agentnotary-version:
+    description: Version of agentnotary to install (e.g. "0.4.0" or "" for latest)
+    required: false
+    default: ""
+  fail-on-drift:
+    description: Fail the job if `seal --verify` detects drift
+    required: false
+    default: "true"
+  fail-on-attack:
+    description: Fail the job if any OWASP attack succeeds (high/critical only)
+    required: false
+    default: "false"
+  fail-on-compliance:
+    description: Fail the job if `compliance --check` errors
+    required: false
+    default: "true"
+  min-score:
+    description: Minimum governance score required to pass (0-100; "" to skip)
+    required: false
+    default: ""
+
+outputs:
+  score:
+    description: Governance score (0-100)
+    value: ${{ steps.score.outputs.score }}
+  grade:
+    description: Letter grade (A/B/C/D/F)
+    value: ${{ steps.score.outputs.grade }}
+  badge-url:
+    description: shields.io badge URL for this score
+    value: ${{ steps.score.outputs.badge-url }}
+  drift-detected:
+    description: "true" if seal --verify detected drift
+    value: ${{ steps.verify.outputs.drift }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install agentnotary
+      shell: bash
+      run: |
+        if [[ -n "${{ inputs.agentnotary-version }}" ]]; then
+          pip install "agentnotary==${{ inputs.agentnotary-version }}"
+        else
+          pip install --upgrade agentnotary
+        fi
+        agentnotary --help | head -3
+
+    - name: Validate manifest
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        if [[ ! -f "${{ inputs.manifest }}" ]]; then
+          echo "::error::No manifest at ${{ inputs.manifest }}"
+          exit 1
+        fi
+        agentnotary validate
+
+    - name: Verify seal (drift detection)
+      id: verify
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        if [[ ! -f agent.lock ]]; then
+          echo "::warning::No agent.lock — skipping seal verification."
+          echo "drift=skipped" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if agentnotary seal --verify; then
+          echo "drift=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "drift=true" >> "$GITHUB_OUTPUT"
+          if [[ "${{ inputs.fail-on-drift }}" == "true" ]]; then
+            echo "::error::agent.lock drift detected. Re-seal or revert the change."
+            exit 1
+          else
+            echo "::warning::agent.lock drift detected (fail-on-drift=false)"
+          fi
+        fi
+
+    - name: Adversarial dry-run (OWASP LLM Top 10)
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        # --dry-run is non-network; predicts blockability from declared guardrails.
+        # CI mode never sends real prompts, so it's safe and fast.
+        if [[ "${{ inputs.fail-on-attack }}" == "true" ]]; then
+          agentnotary attack --suite owasp-llm-top10 --dry-run
+        else
+          agentnotary attack --suite owasp-llm-top10 --dry-run || true
+        fi
+
+    - name: Compliance check
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        if [[ "${{ inputs.fail-on-compliance }}" == "true" ]]; then
+          agentnotary compliance --check
+        else
+          agentnotary compliance --check || true
+        fi
+
+    - name: Compute governance score
+      id: score
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        agentnotary score --json > /tmp/score.json
+        score=$(python -c "import json; print(json.load(open('/tmp/score.json'))['score'])")
+        grade=$(python -c "import json; print(json.load(open('/tmp/score.json'))['grade'])")
+        url=$(python -c "import json; print(json.load(open('/tmp/score.json'))['badge_url'])")
+        echo "score=$score"        >> "$GITHUB_OUTPUT"
+        echo "grade=$grade"        >> "$GITHUB_OUTPUT"
+        echo "badge-url=$url"      >> "$GITHUB_OUTPUT"
+        echo "AgentNotary score: $score / 100 (grade $grade)"
+
+    - name: Enforce minimum score
+      if: inputs.min-score != ''
+      shell: bash
+      run: |
+        if (( ${{ steps.score.outputs.score }} < ${{ inputs.min-score }} )); then
+          echo "::error::Score ${{ steps.score.outputs.score }} below required ${{ inputs.min-score }}"
+          exit 1
+        fi
+
+    - name: Summary
+      shell: bash
+      run: |
+        cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+        ## 🪪 AgentNotary CI
+
+        | Check | Result |
+        |---|---|
+        | Score | **${{ steps.score.outputs.score }}/100** (grade ${{ steps.score.outputs.grade }}) |
+        | Drift | ${{ steps.verify.outputs.drift }} |
+        | Badge | ![score](${{ steps.score.outputs.badge-url }}) |
+
+        Run \`agentnotary doctor\` locally to see the full punch-list.
+        EOF
