@@ -18,6 +18,31 @@ import yaml
 
 MANIFEST_FILENAME = "agentnotary.yaml"
 LEGACY_MANIFEST_FILENAME = "agentnotary.yaml"  # backwards-compat: agentnotary.yaml → agentnotary.yaml
+
+
+def safe_resolve(base: Path, untrusted: str) -> Path:
+    """Resolve *untrusted* relative to *base* and verify it stays inside.
+
+    Raises ``ValueError`` for absolute paths, ``..`` traversal, or any
+    resolved path that escapes the base directory.
+    """
+    if Path(untrusted).is_absolute():
+        raise ValueError(
+            f"Absolute paths are not allowed in manifest fields: {untrusted}"
+        )
+    if ".." in Path(untrusted).parts:
+        raise ValueError(
+            f"Path traversal ('..') is not allowed in manifest fields: {untrusted}"
+        )
+    resolved = (base / untrusted).resolve()
+    base_resolved = base.resolve()
+    try:
+        resolved.relative_to(base_resolved)
+    except ValueError:
+        raise ValueError(
+            f"Path escapes project directory: {untrusted}"
+        ) from None
+    return resolved
 API_VERSION_V02 = "agentnotary/v0.2"
 LEGACY_API_VERSIONS = {"agentnotary/v0.2"}
 
@@ -400,7 +425,7 @@ def parse_manifest(path: str = ".") -> AgentManifest:
     prompt_file = agent.get("system_prompt_file")
     prompt_files = []
     if prompt_file:
-        prompt_path = Path(path) / prompt_file
+        prompt_path = safe_resolve(Path(path), prompt_file)
         prompt_files.append(prompt_file)
         if prompt_path.exists():
             system_prompt = prompt_path.read_text()

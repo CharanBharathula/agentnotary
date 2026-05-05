@@ -19,7 +19,7 @@ from typing import Optional
 
 import yaml
 
-from agentnotary.manifest import AgentManifest, parse_manifest
+from agentnotary.manifest import AgentManifest, parse_manifest, safe_resolve
 from agentnotary.pricing import estimate_cost, lookup_pricing
 
 
@@ -128,7 +128,7 @@ def run_bench(base_dir: str = ".", models: Optional[list] = None,
     eval_path = eval_path or manifest.eval_suite or "./evals/test_suite.yaml"
 
     from pathlib import Path
-    suite_path = Path(base_dir) / eval_path if not Path(eval_path).is_absolute() else Path(eval_path)
+    suite_path = safe_resolve(Path(base_dir), eval_path)
     if not suite_path.exists():
         raise FileNotFoundError(f"Eval suite not found: {suite_path}")
     suite = yaml.safe_load(suite_path.read_text(encoding="utf-8")) or {}

@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import quote
 
-from agentnotary.manifest import AgentManifest, parse_manifest
+from agentnotary.manifest import AgentManifest, parse_manifest, safe_resolve
 
 
 @dataclass
@@ -251,7 +251,7 @@ def _score_evals(manifest: AgentManifest, base_dir: Path, items: list) -> int:
         ))
         return 0
 
-    eval_path = base_dir / manifest.eval_suite
+    eval_path = safe_resolve(base_dir, manifest.eval_suite)
     if not eval_path.exists():
         items.append(ScoreItem(
             dimension="evals",

@@ -262,7 +262,15 @@ def _extract_mcp_package(command: str) -> Optional[str]:
 
 def fingerprint_dataset(path: Path, base_dir: Path) -> dict:
     """Hash a dataset file (eval suite, blocked phrases, etc.)."""
-    full = base_dir / path if not path.is_absolute() else path
+    if path.is_absolute():
+        full = path
+    else:
+        full = (base_dir / path).resolve()
+    base_resolved = base_dir.resolve()
+    try:
+        full.resolve().relative_to(base_resolved)
+    except ValueError:
+        raise ValueError(f"Path escapes project directory: {path}") from None
     return {
         "path": str(path),
         "sha256": hash_file(full),

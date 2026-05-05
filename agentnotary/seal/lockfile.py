@@ -19,7 +19,7 @@ from typing import Optional
 
 import yaml
 
-from agentnotary.manifest import AgentManifest, parse_manifest
+from agentnotary.manifest import AgentManifest, parse_manifest, safe_resolve
 from agentnotary.seal.fingerprint import (
     HASH_PREFIX,
     fingerprint_dataset,
@@ -160,7 +160,7 @@ def seal_agent(base_dir: str = ".", *, probe: bool = False,
     prompt_fps = []
     seen = set()
     if manifest.system_prompt_file:
-        p = base / manifest.system_prompt_file
+        p = safe_resolve(base, manifest.system_prompt_file)
         if str(p) not in seen:
             prompt_fps.append(fingerprint_prompt(p))
             seen.add(str(p))
@@ -178,10 +178,10 @@ def seal_agent(base_dir: str = ".", *, probe: bool = False,
     # Dataset fingerprints
     dataset_paths: list[Path] = []
     if manifest.eval_suite:
-        dataset_paths.append(Path(manifest.eval_suite))
+        dataset_paths.append(safe_resolve(base, manifest.eval_suite))
     # Blocked phrases file from content guardrail
     if manifest.guardrail_spec and manifest.guardrail_spec.content.blocked_phrases_file:
-        dataset_paths.append(Path(manifest.guardrail_spec.content.blocked_phrases_file))
+        dataset_paths.append(safe_resolve(base, manifest.guardrail_spec.content.blocked_phrases_file))
 
     dataset_fps = [fingerprint_dataset(p, base) for p in dataset_paths]
 
