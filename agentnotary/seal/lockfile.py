@@ -271,6 +271,26 @@ def verify_seal(base_dir: str = ".") -> SealVerifyResult:
     except FileNotFoundError as e:
         return SealVerifyResult(ok=False, diffs=[], summary=str(e))
 
+    # Recompute the rollup hash of the loaded lockfile and compare against
+    # the stored seal_hash.  This detects tampering of individual fields
+    # inside agent.lock even when the on-disk artifacts were also swapped
+    # to match the forged fingerprints.
+    recomputed = _compute_seal_hash(existing)
+    if existing.seal_hash != recomputed:
+        return SealVerifyResult(
+            ok=False,
+            diffs=[SealDiff(
+                kind="changed",
+                path="seal_hash",
+                before=str(existing.seal_hash),
+                after=recomputed,
+            )],
+            summary=(
+                "Lockfile integrity check failed: seal_hash does not match "
+                "the lockfile contents. The lockfile may have been tampered with."
+            ),
+        )
+
     fresh = seal_agent(base_dir, probe=False)
     diffs = diff_seals(existing, fresh)
 

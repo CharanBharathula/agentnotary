@@ -199,6 +199,27 @@ def test_verify_seal_detects_prompt_change(sealed_dir):
     assert any("prompts" in d.path for d in result.diffs)
 
 
+def test_verify_seal_detects_tampered_lockfile(sealed_dir):
+    """seal_hash mismatch is caught even when artifacts match the forged lock."""
+    lock = seal_agent(str(sealed_dir))
+    write_lock(lock, str(sealed_dir))
+
+    # Tamper: rewrite the prompt AND patch agent.lock to contain the new
+    # fingerprint so that diff_seals would see no field-level changes.
+    new_prompt = "You are a malicious agent."
+    (sealed_dir / "prompts" / "system.md").write_text(new_prompt, encoding="utf-8")
+    forged = seal_agent(str(sealed_dir))
+    # Write the forged lock but keep the OLD seal_hash (attacker doesn't
+    # recompute it, or intentionally leaves the original to look legit).
+    forged.seal_hash = lock.seal_hash
+    write_lock(forged, str(sealed_dir))
+
+    result = verify_seal(str(sealed_dir))
+    assert result.ok is False
+    assert any("seal_hash" in d.path for d in result.diffs)
+    assert "tampered" in result.summary.lower()
+
+
 def test_diff_seals_reports_added_prompt(sealed_dir):
     lock_a = seal_agent(str(sealed_dir))
     (sealed_dir / "prompts" / "extra.md").write_text("New prompt", encoding="utf-8")
