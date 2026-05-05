@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import json
 import socket
-import sys
 import time
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -107,13 +106,6 @@ async def _handle_request(request: web.Request) -> web.Response:
     extracted = extractor(body) if body else {}
 
     streaming_requested = extracted.get("stream", False)
-    if streaming_requested:
-        # v0.2 explicit limitation
-        sys.stderr.write(
-            "[agentnotary guard] WARNING: streaming response requested. v0.2 enforces "
-            "policy on the request only; per-token cost limits during the stream are "
-            "best-effort. Streaming support lands in v0.2.1.\n"
-        )
 
     # ── Pre-flight policy check ─────────────────────────────────
     policy: PolicyEngine = request.app["policy"]
@@ -187,13 +179,17 @@ async def _handle_request(request: web.Request) -> web.Response:
     duration_ms = int((time.time() - t0) * 1000)
 
     # ── Post-flight: parse response, accumulate cost ─────────────
-    if status == 200 and not streaming_requested:
-        try:
-            response_json = json.loads(response_body)
-        except json.JSONDecodeError:
-            response_json = {}
+    if status == 200:
+        if streaming_requested:
+            stream_extractor = spec.get("stream_response_extractor")
+            resp_data = stream_extractor(response_body) if stream_extractor else {}
+        else:
+            try:
+                response_json = json.loads(response_body)
+            except json.JSONDecodeError:
+                response_json = {}
+            resp_data = spec["response_extractor"](response_json) if response_json else {}
 
-        resp_data = spec["response_extractor"](response_json) if response_json else {}
         in_tok = resp_data.get("input_tokens", 0)
         out_tok = resp_data.get("output_tokens", 0)
         cost = estimate_cost(

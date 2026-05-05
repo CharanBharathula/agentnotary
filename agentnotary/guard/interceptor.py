@@ -11,6 +11,7 @@ guard blocks a call.
 
 from __future__ import annotations
 
+import json
 from typing import Optional
 
 
@@ -139,16 +140,99 @@ def openai_error(reason: str, status: int = 403) -> dict:
     }
 
 
+def _parse_sse_events(raw: bytes) -> list[dict]:
+    """Parse an SSE byte stream into a list of JSON event data dicts."""
+    events = []
+    text = raw.decode("utf-8", errors="replace")
+    for line in text.split("\n"):
+        line = line.strip()
+        if line.startswith("data: "):
+            payload = line[6:]
+            if payload == "[DONE]":
+                continue
+            try:
+                events.append(json.loads(payload))
+            except json.JSONDecodeError:
+                continue
+    return events
+
+
+def extract_anthropic_stream_response(raw: bytes) -> dict:
+    """Extract metadata from a buffered Anthropic SSE stream."""
+    events = _parse_sse_events(raw)
+    input_tokens = 0
+    output_tokens = 0
+    text_parts: list[str] = []
+    tool_calls: list[str] = []
+
+    for ev in events:
+        ev_type = ev.get("type", "")
+        if ev_type == "message_start":
+            usage = ev.get("message", {}).get("usage", {})
+            input_tokens += usage.get("input_tokens", 0)
+        elif ev_type == "content_block_start":
+            block = ev.get("content_block", {})
+            if block.get("type") == "tool_use" and block.get("name"):
+                tool_calls.append(block["name"])
+        elif ev_type == "content_block_delta":
+            delta = ev.get("delta", {})
+            if delta.get("type") == "text_delta":
+                text_parts.append(delta.get("text", ""))
+        elif ev_type == "message_delta":
+            usage = ev.get("usage", {})
+            output_tokens += usage.get("output_tokens", 0)
+
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "response_text": "".join(text_parts),
+        "tool_calls": tool_calls,
+    }
+
+
+def extract_openai_stream_response(raw: bytes) -> dict:
+    """Extract metadata from a buffered OpenAI SSE stream."""
+    events = _parse_sse_events(raw)
+    input_tokens = 0
+    output_tokens = 0
+    text_parts: list[str] = []
+    tool_calls: list[str] = []
+
+    for ev in events:
+        usage = ev.get("usage")
+        if usage:
+            input_tokens = usage.get("prompt_tokens", input_tokens)
+            output_tokens = usage.get("completion_tokens", output_tokens)
+
+        for choice in ev.get("choices", []):
+            delta = choice.get("delta", {})
+            if delta.get("content"):
+                text_parts.append(delta["content"])
+            for tc in delta.get("tool_calls", []):
+                fn = tc.get("function", {})
+                if fn.get("name"):
+                    tool_calls.append(fn["name"])
+
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "response_text": "".join(text_parts),
+        "tool_calls": tool_calls,
+    }
+
+
 PROVIDERS = {
     "anthropic": {
         "request_extractor": extract_anthropic_request,
         "response_extractor": extract_anthropic_response,
+        "stream_response_extractor": extract_anthropic_stream_response,
         "error_body": anthropic_error,
         "default_url": "https://api.anthropic.com",
     },
     "openai": {
         "request_extractor": extract_openai_request,
         "response_extractor": extract_openai_response,
+        "stream_response_extractor": extract_openai_stream_response,
         "error_body": openai_error,
         "default_url": "https://api.openai.com",
     },
