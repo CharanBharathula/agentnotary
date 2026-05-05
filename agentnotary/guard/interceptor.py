@@ -66,6 +66,11 @@ def extract_openai_request(body: dict) -> dict:
             if "name" in fn:
                 tools.append(fn["name"])
 
+    # Legacy OpenAI 'functions' field: function defs have 'name' at top level
+    for f in body.get("functions", []):
+        if isinstance(f, dict) and "name" in f:
+            tools.append(f["name"])
+
     return {
         "prompt_text": "\n".join(parts),
         "tools_requested": tools,
@@ -106,6 +111,10 @@ def extract_openai_response(body: dict) -> dict:
             fn = tc.get("function", {})
             if fn.get("name"):
                 tool_calls.append(fn["name"])
+        # Legacy 'function_call' response field
+        fc = msg.get("function_call")
+        if isinstance(fc, dict) and fc.get("name"):
+            tool_calls.append(fc["name"])
     return {
         "input_tokens": usage.get("prompt_tokens", 0),
         "output_tokens": usage.get("completion_tokens", 0),
