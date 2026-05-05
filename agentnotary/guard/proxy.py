@@ -34,6 +34,7 @@ import aiohttp
 from aiohttp import web
 
 from agentnotary.guard.interceptor import PROVIDERS, get_default_url
+from agentnotary.guard import pii as pii_mod
 from agentnotary.guard.policies import CallMeta, PolicyEngine
 from agentnotary.manifest import AgentManifest
 from agentnotary.pricing import estimate_cost, estimate_input_cost
@@ -156,7 +157,8 @@ async def _handle_request(request: web.Request) -> web.Response:
 
     # Apply redactions if the policy modified the request
     if decision.redacted_prompt is not None:
-        body = _apply_redaction(body, provider, decision.redacted_prompt)
+        pii_patterns = policy.spec.pii.patterns or list(pii_mod.PATTERNS.keys())
+        body = _apply_redaction(body, provider, pii_patterns)
         request_body_bytes = json.dumps(body).encode("utf-8")
 
     # ── Forward to upstream provider ─────────────────────────────
@@ -225,27 +227,50 @@ async def _handle_request(request: web.Request) -> web.Response:
     return web.Response(body=response_body, status=status, headers=response_headers)
 
 
-def _apply_redaction(body: dict, provider: str, redacted_text: str) -> dict:
+def _apply_redaction(body: dict, provider: str, patterns: list) -> dict:
     """
-    Replace the user-side prompt content with the redacted version.
+    Detect and redact PII in every text-bearing field of the request body.
 
-    For both Anthropic and OpenAI, we replace the content of the last user message
-    with the redacted text. Multi-turn redaction is best-effort in v0.2.
+    Performs independent detection+redaction per field so that list-form system
+    content blocks, tool_result blocks, and multi-turn messages are all covered.
     """
+
+    def _redact_text(text: str) -> str:
+        matches = pii_mod.detect(text, patterns)
+        return pii_mod.redact(text, matches) if matches else text
+
+    def _redact_content_blocks(blocks: list) -> None:
+        for block in blocks:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "text":
+                block["text"] = _redact_text(block.get("text", ""))
+            elif block.get("type") == "tool_result":
+                tr = block.get("content", "")
+                if isinstance(tr, str):
+                    block["content"] = _redact_text(tr)
+                elif isinstance(tr, list):
+                    _redact_content_blocks(tr)
+
     if provider == "anthropic":
-        msgs = body.get("messages", [])
-        if msgs:
-            for m in reversed(msgs):
-                if m.get("role") == "user":
-                    m["content"] = redacted_text
-                    break
+        if "system" in body:
+            if isinstance(body["system"], str):
+                body["system"] = _redact_text(body["system"])
+            elif isinstance(body["system"], list):
+                _redact_content_blocks(body["system"])
+        for m in body.get("messages", []):
+            c = m.get("content", "")
+            if isinstance(c, str):
+                m["content"] = _redact_text(c)
+            elif isinstance(c, list):
+                _redact_content_blocks(c)
     elif provider == "openai":
-        msgs = body.get("messages", [])
-        if msgs:
-            for m in reversed(msgs):
-                if m.get("role") == "user":
-                    m["content"] = redacted_text
-                    break
+        for m in body.get("messages", []):
+            c = m.get("content", "")
+            if isinstance(c, str):
+                m["content"] = _redact_text(c)
+            elif isinstance(c, list):
+                _redact_content_blocks(c)
     return body
 
 

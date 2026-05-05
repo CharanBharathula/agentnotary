@@ -20,16 +20,30 @@ def extract_anthropic_request(body: dict) -> dict:
         { "model": "...", "messages": [...], "tools": [...], "system": "..." }
     """
     parts = []
-    if "system" in body and isinstance(body["system"], str):
-        parts.append(body["system"])
+    if "system" in body:
+        if isinstance(body["system"], str):
+            parts.append(body["system"])
+        elif isinstance(body["system"], list):
+            for block in body["system"]:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    parts.append(block.get("text", ""))
     for m in body.get("messages", []):
         c = m.get("content", "")
         if isinstance(c, str):
             parts.append(c)
         elif isinstance(c, list):
             for block in c:
-                if isinstance(block, dict) and block.get("type") == "text":
-                    parts.append(block.get("text", ""))
+                if isinstance(block, dict):
+                    if block.get("type") == "text":
+                        parts.append(block.get("text", ""))
+                    elif block.get("type") == "tool_result":
+                        tr_content = block.get("content", "")
+                        if isinstance(tr_content, str):
+                            parts.append(tr_content)
+                        elif isinstance(tr_content, list):
+                            for sub_block in tr_content:
+                                if isinstance(sub_block, dict) and sub_block.get("type") == "text":
+                                    parts.append(sub_block.get("text", ""))
 
     tools = []
     for t in body.get("tools", []):

@@ -95,6 +95,97 @@ def test_engine_redacts_pii_when_action_redact(manifest):
     assert "[REDACTED-EMAIL]" in decision.redacted_prompt
 
 
+def test_extract_anthropic_list_form_system():
+    """List-form system content blocks must be included in prompt_text."""
+    from agentnotary.guard.interceptor import extract_anthropic_request
+    body = {
+        "model": "claude-sonnet-4-5-20251022",
+        "system": [{"type": "text", "text": "Customer SSN 123-45-6789"}],
+        "messages": [{"role": "user", "content": "lookup"}],
+    }
+    extracted = extract_anthropic_request(body)
+    assert "123-45-6789" in extracted["prompt_text"]
+
+
+def test_extract_anthropic_tool_result_blocks():
+    """Text inside tool_result content blocks must be included in prompt_text."""
+    from agentnotary.guard.interceptor import extract_anthropic_request
+    body = {
+        "model": "claude-sonnet-4-5-20251022",
+        "messages": [
+            {"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": "t1",
+                 "content": "SSN is 123-45-6789"},
+            ]},
+        ],
+    }
+    extracted = extract_anthropic_request(body)
+    assert "123-45-6789" in extracted["prompt_text"]
+
+
+def test_engine_redacts_pii_in_list_form_system(manifest):
+    """PII in list-form system must trigger redaction via the policy engine."""
+    engine = PolicyEngine(manifest)
+    from agentnotary.guard.interceptor import extract_anthropic_request
+    body = {
+        "model": "claude-sonnet-4-5-20251022",
+        "system": [{"type": "text", "text": "Customer SSN 123-45-6789"}],
+        "messages": [{"role": "user", "content": "lookup"}],
+    }
+    extracted = extract_anthropic_request(body)
+    decision = engine.pre_flight(CallMeta(
+        provider="anthropic",
+        model="claude-sonnet-4-5-20251022",
+        prompt_text=extracted["prompt_text"],
+        tools_requested=[],
+    ))
+    assert decision.allowed
+    assert decision.redacted_prompt is not None
+    assert "123-45-6789" not in decision.redacted_prompt
+    assert "[REDACTED-SSN]" in decision.redacted_prompt
+
+
+def test_apply_redaction_covers_list_form_system():
+    """_apply_redaction must redact PII in list-form system content blocks."""
+    import copy
+    from agentnotary.guard.proxy import _apply_redaction
+    body = {
+        "system": [{"type": "text", "text": "Customer SSN 123-45-6789, card 4111-1111-1111-1111"}],
+        "messages": [{"role": "user", "content": "lookup"}],
+    }
+    body = _apply_redaction(copy.deepcopy(body), "anthropic", ["SSN", "CREDIT_CARD"])
+    assert "123-45-6789" not in body["system"][0]["text"]
+    assert "[REDACTED-SSN]" in body["system"][0]["text"]
+
+
+def test_apply_redaction_covers_string_system():
+    """_apply_redaction must redact PII in string-form system field."""
+    import copy
+    from agentnotary.guard.proxy import _apply_redaction
+    body = {
+        "system": "Customer SSN 123-45-6789",
+        "messages": [{"role": "user", "content": "lookup"}],
+    }
+    body = _apply_redaction(copy.deepcopy(body), "anthropic", ["SSN"])
+    assert "123-45-6789" not in body["system"]
+    assert "[REDACTED-SSN]" in body["system"]
+
+
+def test_apply_redaction_covers_tool_result():
+    """_apply_redaction must redact PII inside tool_result content blocks."""
+    import copy
+    from agentnotary.guard.proxy import _apply_redaction
+    body = {
+        "messages": [{"role": "user", "content": [
+            {"type": "tool_result", "tool_use_id": "t1",
+             "content": "Email: foo@bar.com"},
+        ]}],
+    }
+    body = _apply_redaction(copy.deepcopy(body), "anthropic", ["EMAIL"])
+    assert "foo@bar.com" not in body["messages"][0]["content"][0]["content"]
+    assert "[REDACTED-EMAIL]" in body["messages"][0]["content"][0]["content"]
+
+
 def test_engine_blocks_when_iterations_exceeded(manifest):
     engine = PolicyEngine(manifest)
     # Push counter past the cap
