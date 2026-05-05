@@ -219,8 +219,13 @@ async def _handle_request(request: web.Request) -> web.Response:
             recorder.record_guardrail(
                 guardrail_name=outbound_violation.rule,
                 triggered_by="response",
-                action_taken=f"flagged: {outbound_violation.detail}",
+                action_taken=f"blocked: {outbound_violation.detail}",
             )
+            on_block = request.app.get("on_block")
+            if on_block:
+                on_block(outbound_violation)
+            err_body = spec["error_body"](outbound_violation.detail)
+            return web.json_response(err_body, status=403)
 
     return web.Response(body=response_body, status=status, headers=response_headers)
 
